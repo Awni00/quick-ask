@@ -55,10 +55,12 @@
   const sendButton = $("send"), models = $("models"), toast = $("toast");
   const hint = $("hint"), tools = $("tools"), legend = $("legend");
   const handoffButton = $("handoff"), newButton = $("new");
+  const contextCard = $("context"), axHint = $("axhint");
 
   let state = {
     messages: [], pending: null, error: null, model: "", models: [],
     provider: "Claude", handoff: null, showCmdHint: false, maxHeight: 600,
+    context: null, axHint: false,
   };
   let scheduled = false;
   let modelsOpen = false;
@@ -75,7 +77,10 @@
     let html = "";
     state.messages.forEach((m, i) => {
       if (m.role === "user") {
-        html += `<div class="msg user"><div class="bubble">${escapeHtml(m.content)}</div></div>`;
+        const quote = m.context
+          ? `<div class="quote" title="${escapeHtml(contextLabel(m.context))}">${escapeHtml(m.context.text)}</div>`
+          : "";
+        html += `<div class="msg user"><div class="bubble">${quote}${escapeHtml(m.content)}</div></div>`;
         return;
       }
       const latest = i === lastAnswer;
@@ -99,7 +104,10 @@
     // Composer
     const empty = state.messages.length === 0 && !isLoading() && !state.error;
     document.body.classList.toggle("empty", empty);
-    input.placeholder = empty ? `Ask ${state.provider}` : "Ask a follow-up";
+    renderContext();
+    input.placeholder = state.context
+      ? "Ask about the selection"
+      : empty ? `Ask ${state.provider}` : "Ask a follow-up";
     updateSendButton();
     renderModels();
 
@@ -112,6 +120,25 @@
 
     fitThread();
     if (nearBottom || isLoading()) thread.scrollTop = thread.scrollHeight;
+  }
+
+  function contextLabel(c) {
+    const where = c.source ? `Selected in ${c.source}` : "Selected text";
+    const lines = `${c.lines} line${c.lines === 1 ? "" : "s"}`;
+    return `${where} · ${lines}${c.truncated ? " (shortened)" : ""}`;
+  }
+
+  // The selection waiting to be attached, or (once) the note about Accessibility.
+  function renderContext() {
+    const c = state.context;
+    contextCard.hidden = !c;
+    if (c) {
+      contextCard.innerHTML =
+        `<div class="card-body"><div class="card-meta">${escapeHtml(contextLabel(c))}</div>` +
+        `<div class="card-text">${escapeHtml(c.text)}</div></div>` +
+        `<button class="icon" data-clear-context aria-label="Remove selection" title="Remove">${icon("x")}</button>`;
+    }
+    axHint.hidden = !(state.axHint && !c && state.messages.length === 0);
   }
 
   // Send turns into stop while an answer streams; faded when there's nothing to send.
@@ -303,6 +330,19 @@
     } else {
       chooseModel(button.dataset.model);
     }
+  });
+
+  contextCard.addEventListener("click", (e) => {
+    if (e.target.closest("[data-clear-context]")) {
+      post("clearContext");
+      input.focus();
+    }
+  });
+  axHint.addEventListener("click", (e) => {
+    const button = e.target.closest("[data-ax]");
+    if (!button) return;
+    post(button.dataset.ax === "open" ? "openAXSettings" : "dismissAXHint");
+    input.focus();
   });
 
   handoffButton.addEventListener("click", () => post("handoff"));

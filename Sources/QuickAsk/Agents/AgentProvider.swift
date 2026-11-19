@@ -12,6 +12,15 @@ struct ChatMessage: Equatable {
     var role: Role
     var content: String
     var stopped = false  // answer cut short by the user
+    var context: AttachedContext? = nil  // selected text attached to a question
+
+    /// The message as the model sees it: the attached selection, then the question.
+    var fullText: String {
+        guard let context else { return content }
+        let from = context.source.map { " (from \($0))" } ?? ""
+        let cut = context.truncated ? "\n[selection truncated]" : ""
+        return "Selected text\(from):\n<selection>\n\(context.text)\(cut)\n</selection>\n\n\(content)"
+    }
 }
 
 struct ModelOption {
@@ -90,9 +99,9 @@ enum Prompt {
     /// A single question is sent as-is; a longer conversation becomes a transcript,
     /// since each request starts a fresh, unsaved CLI session.
     static func transcript(_ messages: [ChatMessage]) -> String {
-        if messages.count == 1 { return messages[0].content }
+        if messages.count == 1 { return messages[0].fullText }
         let turns = messages
-            .map { "<\($0.role.rawValue)>\n\($0.content)\n</\($0.role.rawValue)>" }
+            .map { "<\($0.role.rawValue)>\n\($0.fullText)\n</\($0.role.rawValue)>" }
             .joined(separator: "\n\n")
         return "Here is our conversation so far. Reply to the last user message.\n\n" + turns
     }

@@ -47,6 +47,9 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
     private var contentHeight: CGFloat = 56
     private var lastHidden: Date?
     private var webReady = false
+    /// Selected text waiting to be attached to the next question.
+    private var pendingContext: AttachedContext?
+    private var lastCapturedText: String?
 
     init(store: ConversationStore, settings: Settings) {
         self.store = store
@@ -115,11 +118,27 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
 
     func toggle() { panel.isVisible ? hide() : show() }
 
-    func show() {
+    /// The hotkey: hides the popup, or reads the current selection in the
+    /// frontmost app (before the popup takes focus) and shows the popup with it.
+    func toggleFromHotkey() {
+        if panel.isVisible { return hide() }
+        SelectionCapture.capture { [weak self] selection in
+            self?.show(selection: selection)
+        }
+    }
+
+    /// `selection` is attached to the next question, unless it's the same text
+    /// that was captured last time (so reopening doesn't re-attach it).
+    func show(selection: AttachedContext? = nil) {
         if let lastHidden, !store.isLoading,
            Date().timeIntervalSince(lastHidden) > settings.reopenMinutes * 60 {
             store.reset()
+            pendingContext = nil
         }
+        if let selection, selection.text != lastCapturedText {
+            pendingContext = selection
+        }
+        if let selection { lastCapturedText = selection.text }
         layout()
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(webView)
@@ -133,7 +152,14 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
         lastHidden = Date()
     }
 
-    func ask(_ question: String) { store.send(question) }
+    func ask(_ question: String) { send(question) }
+
+    private func send(_ text: String) {
+        if store.send(text, context: pendingContext) {
+            pendingContext = nil
+            pushState()
+        }
+    }
 
     func newChat() {
         store.reset()
@@ -180,10 +206,14 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
     private func pushState() {
         var messages: [[String: Any]] = []
         for m in store.messages {
-            messages.append(["role": m.role.rawValue, "content": m.content, "stopped": m.stopped])
+            var message: [String: Any] = ["role": m.role.rawValue, "content": m.content, "stopped": m.stopped]
+            if let context = m.context { message["context"] = Self.preview(context) }
+            messages.append(message)
         }
         let state: [String: Any] = [
             "messages": messages,
+            "context": pendingContext.map(Self.preview) as Any? ?? NSNull(),
+            "axHint": !SelectionCapture.isTrusted && !settings.axHintDismissed,
             "pending": store.pending as Any? ?? NSNull(),
             "error": store.error as Any? ?? NSNull(),
             "model": store.model,
@@ -198,6 +228,17 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
         js("QA.setState(\(json))")
     }
 
+    /// What the page needs to show a selection: the start of the text, where it
+    /// came from and how long it is (the full text stays on the Swift side).
+    private static func preview(_ context: AttachedContext) -> [String: Any] {
+        [
+            "text": String(context.text.prefix(400)),
+            "source": context.source as Any? ?? NSNull(),
+            "lines": context.text.split(separator: "\n", omittingEmptySubsequences: false).count,
+            "truncated": context.truncated,
+        ]
+    }
+
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
         switch type {
@@ -210,7 +251,16 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
                 contentHeight = CGFloat(value)
                 if panel.isVisible { layout() }
             }
-        case "send": store.send(body["text"] as? String ?? "")
+        case "send": send(body["text"] as? String ?? "")
+        case "clearContext":
+            pendingContext = nil
+            pushState()
+        case "openAXSettings":
+            hide()
+            SelectionCapture.requestPermission()
+        case "dismissAXHint":
+            settings.axHintDismissed = true
+            pushState()
         case "retry": store.retry()
         case "stop": store.stop()
         case "newChat": newChat()

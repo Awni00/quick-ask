@@ -47,7 +47,15 @@ enum Handoff {
         let header = "Continuing a conversation I started in a quick-question popup:"
         let turns = messages.map { m -> String in
             let who = m.role == .user ? "**Me:**" : "**\(assistantName):**"
-            return "\(who) \(m.content)\(m.stopped ? " _(stopped)_" : "")"
+            var quote = ""
+            if let context = m.context {
+                let from = context.source.map { " (from \($0))" } ?? ""
+                quote = "\n> _Selected text\(from):_\n" + context.text
+                    .split(separator: "\n", omittingEmptySubsequences: false)
+                    .map { "> \($0)" }
+                    .joined(separator: "\n") + "\n\n"
+            }
+            return "\(who)\(quote.isEmpty ? " " : quote)\(m.content)\(m.stopped ? " _(stopped)_" : "")"
         }
         let full = ([header] + turns).joined(separator: "\n\n") + "\n\n"
         if full.count <= limit { return Text(text: full, truncated: false, full: full) }

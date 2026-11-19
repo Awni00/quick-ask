@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         installStatusItem(hotkey: settings.hotkey)
         LoginItem.apply()
 
-        hotKey = HotKey(spec: settings.hotkey) { [weak self] in self?.controller.toggle() }
+        hotKey = HotKey(spec: settings.hotkey) { [weak self] in self?.controller.toggleFromHotkey() }
         if hotKey == nil {
             NSLog("QuickAsk: couldn't register hotkey \"\(settings.hotkey)\"")
         }

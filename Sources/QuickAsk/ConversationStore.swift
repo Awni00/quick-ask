@@ -26,10 +26,13 @@ final class ConversationStore {
     var isEmpty: Bool { messages.isEmpty && pending == nil && error == nil }
     var lastAnswer: String? { messages.last { $0.role == .assistant }?.content }
 
-    func send(_ text: String) {
+    /// Returns whether the question was sent.
+    @discardableResult
+    func send(_ text: String, context: AttachedContext? = nil) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isLoading else { return }
-        run(messages + [ChatMessage(role: .user, content: text)])
+        guard !text.isEmpty, !isLoading else { return false }
+        run(messages + [ChatMessage(role: .user, content: text, context: context)])
+        return true
     }
 
     /// Asks the last question again (with the current model).

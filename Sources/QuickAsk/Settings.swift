@@ -29,6 +29,12 @@ final class Settings {
         set { defaults.set(newValue, forKey: "cmdHintSeen") }
     }
 
+    /// Set when the user closes the "allow Accessibility" note in the popup.
+    var axHintDismissed: Bool {
+        get { defaults.bool(forKey: "axHintDismissed") }
+        set { defaults.set(newValue, forKey: "axHintDismissed") }
+    }
+
     /// Open Quick Ask at login (toggle in the menu-bar menu).
     var launchAtLogin: Bool {
         get { defaults.bool(forKey: "launchAtLogin") }
