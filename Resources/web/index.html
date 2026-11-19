@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="vendor/katex/katex.min.css">
+<link rel="stylesheet" href="vendor/hljs-light.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="vendor/hljs-dark.min.css" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="empty">
+<div id="app">
+  <div id="thread"></div>
+  <div id="composer">
+    <span class="spark" aria-hidden="true">✦</span>
+    <textarea id="input" rows="1" placeholder="Ask Claude" autofocus spellcheck="false"></textarea>
+    <button id="model" class="chip" title="Switch model (⌘1–⌘3)"></button>
+  </div>
+  <div id="hints">
+    <span id="toast"></span>
+    <span><kbd>↵</kbd>send</span>
+    <span><kbd>⌘C</kbd>copy answer</span>
+    <span><kbd>⌘R</kbd>retry</span>
+    <span><kbd>⌘N</kbd>new chat</span>
+    <span id="handoff-hint" hidden><kbd>⌘O</kbd><span id="handoff-label">open in app</span></span>
+    <span><kbd>⌘1–3</kbd>model</span>
+    <span><kbd>esc</kbd>close</span>
+  </div>
+</div>
+<script src="vendor/markdown-it.min.js"></script>
+<script src="vendor/katex/katex.min.js"></script>
+<script src="vendor/texmath.js"></script>
+<script src="vendor/highlight.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

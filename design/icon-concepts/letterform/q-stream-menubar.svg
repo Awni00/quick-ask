@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
+  <path fill="#000" fill-rule="evenodd" d="
+    M1,7.6 A6.6,6.6 0 1,1 14.2,7.6 A6.6,6.6 0 1,1 1,7.6 Z
+    M2.9,7.6 A4.7,4.85 0 1,0 12.3,7.6 A4.7,4.85 0 1,0 2.9,7.6 Z"/>
+  <g transform="rotate(45 7.6 7.6)" stroke="#000" stroke-linecap="round" fill="none">
+    <line x1="12.6" y1="7.6" x2="14.6" y2="7.6" stroke-width="2"/>
+    <circle cx="17" cy="7.6" r="0.95" fill="#000" stroke="none"/>
+  </g>
+</svg>

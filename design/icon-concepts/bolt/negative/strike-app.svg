@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1E2A78"/>
+      <stop offset="1" stop-color="#0B1030"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.10"/>
+      <stop offset="0.5" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.28"/>
+      <stop offset="0.2" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.25"/>
+    </linearGradient>
+    <clipPath id="body"><path d="M285 100H739C841.17 100 924 182.83 924 285V739C924 841.17 841.17 924 739 924H285C182.83 924 100 841.17 100 739V285C100 182.83 182.83 100 285 100Z"/></clipPath>
+    <linearGradient id="amber" x1="0" y1="300" x2="0" y2="764" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFE45C"/><stop offset="1" stop-color="#FFAE00"/>
+    </linearGradient>
+    <clipPath id="knock"><path clip-rule="evenodd" d="M0 0H1024V1024H0ZM611.03 290.35A22 22 0 0 1 630.8 278L746.8 278A22 22 0 0 1 766.74 309.3L700.14 452L758.4 452A22 22 0 0 1 776.76 486.12L585.36 776.12A22 22 0 0 1 545.45 759.58L586.43 559.8L514.8 559.8A22 22 0 0 1 495.03 528.15Z"/></clipPath>
+    <linearGradient id="boltsheen" x1="0" y1="300" x2="0" y2="764" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.35"/><stop offset="0.4" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path d="M285 100H739C841.17 100 924 182.83 924 285V739C924 841.17 841.17 924 739 924H285C182.83 924 100 841.17 100 739V285C100 182.83 182.83 100 285 100Z" fill="url(#bg)"/>
+  <g clip-path="url(#body)">
+    <path d="M265.05 435.85A177.65 177.65 0 1 1 617.65 405A126.65 126.65 0 0 1 491 531.65A0.85 0.85 0 0 0 490.15 532.5L490.15 617.5A50.15 50.15 0 0 1 389.85 617.5L389.85 532.5A101.15 101.15 0 0 1 491 431.35A26.35 26.35 0 0 0 517.35 405A77.35 77.35 0 1 0 363.83 418.43A50.15 50.15 0 0 1 265.05 435.85ZM380.5 786.65A59.5 59.5 0 1 0 499.5 786.65A59.5 59.5 0 1 0 380.5 786.65Z" fill="#000" fill-opacity="0.22" transform="translate(0 14)" clip-path="url(#knock)"/>
+    <path d="M630.8 300A0 0 0 0 1 630.8 300L746.8 300A0 0 0 0 1 746.8 300L665.6 474L758.4 474A0 0 0 0 1 758.4 474L567 764A0 0 0 0 1 567 764L613.4 537.8L514.8 537.8A0 0 0 0 1 514.8 537.8Z" fill="#000" fill-opacity="0.22" transform="translate(0 14)"/>
+    <path d="M265.05 435.85A177.65 177.65 0 1 1 617.65 405A126.65 126.65 0 0 1 491 531.65A0.85 0.85 0 0 0 490.15 532.5L490.15 617.5A50.15 50.15 0 0 1 389.85 617.5L389.85 532.5A101.15 101.15 0 0 1 491 431.35A26.35 26.35 0 0 0 517.35 405A77.35 77.35 0 1 0 363.83 418.43A50.15 50.15 0 0 1 265.05 435.85ZM380.5 786.65A59.5 59.5 0 1 0 499.5 786.65A59.5 59.5 0 1 0 380.5 786.65Z" fill="#F3F5FF" clip-path="url(#knock)"/>
+    <path d="M630.8 300L746.8 300L665.6 474L758.4 474L567 764L613.4 537.8L514.8 537.8Z" fill="url(#amber)"/>
+  </g>
+  <path d="M285 100H739C841.17 100 924 182.83 924 285V739C924 841.17 841.17 924 739 924H285C182.83 924 100 841.17 100 739V285C100 182.83 182.83 100 285 100Z" fill="url(#sheen)"/>
+  <path d="M285 100H739C841.17 100 924 182.83 924 285V739C924 841.17 841.17 924 739 924H285C182.83 924 100 841.17 100 739V285C100 182.83 182.83 100 285 100Z" fill="none" stroke="url(#rim)" stroke-width="4"/>
+</svg>

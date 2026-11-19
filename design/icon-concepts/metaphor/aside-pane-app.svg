@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="100" y1="100" x2="924" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6fd0dc"/>
+      <stop offset=".55" stop-color="#4f86e6"/>
+      <stop offset="1" stop-color="#3d4fc4"/>
+    </linearGradient>
+    <clipPath id="body"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+    <linearGradient id="page" x1="0" y1="230" x2="0" y2="820" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e6ecf8"/>
+    </linearGradient>
+    <linearGradient id="pane" x1="0" y1="420" x2="0" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2a3150"/>
+      <stop offset="1" stop-color="#151a2e"/>
+    </linearGradient>
+    <linearGradient id="paneEdge" x1="0" y1="420" x2="0" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".45"/>
+      <stop offset=".4" stop-color="#ffffff" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity=".04"/>
+    </linearGradient>
+    <linearGradient id="answer" x1="440" y1="0" x2="800" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8fe6ff"/>
+      <stop offset="1" stop-color="#b3a4ff"/>
+    </linearGradient>
+    <linearGradient id="fade" x1="440" y1="0" x2="640" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8fe6ff"/>
+      <stop offset=".75" stop-color="#a7b3ff"/>
+      <stop offset="1" stop-color="#b3a4ff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0" y1="438" x2="0" y2="514" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dfe6ff"/>
+    </linearGradient>
+    <radialGradient id="bloom"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
+    <filter id="b10" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <g clip-path="url(#body)">
+    <!-- soft light bloom -->
+    <circle cx="220" cy="160" r="460" fill="url(#bloom)"/>
+
+    <!-- the work: a document page, partly behind -->
+    <rect x="186" y="236" width="520" height="620" rx="44" fill="#0b1a55" opacity=".25" filter="url(#b10)" transform="translate(0 14)"/>
+    <rect x="186" y="236" width="520" height="620" rx="44" fill="url(#page)"/>
+    <g fill="#c6d0e4">
+      <rect x="246" y="300" width="230" height="26" rx="13" fill="#a9b6d2"/>
+      <rect x="246" y="360" width="400" height="16" rx="8"/>
+      <rect x="246" y="396" width="360" height="16" rx="8"/>
+      <rect x="246" y="432" width="390" height="16" rx="8"/>
+      <rect x="246" y="468" width="250" height="16" rx="8"/>
+      <rect x="246" y="760" width="380" height="16" rx="8"/>
+      <rect x="246" y="796" width="300" height="16" rx="8"/>
+    </g>
+  </g>
+
+  <!-- the aside: a small dark pane floating over the work -->
+  <rect x="330" y="420" width="530" height="320" rx="56" fill="#08103a" opacity=".55" filter="url(#shadow)" transform="translate(0 40)"/>
+  <rect x="330" y="420" width="530" height="320" rx="56" fill="url(#pane)"/>
+  <rect x="331.5" y="421.5" width="527" height="317" rx="54.5" fill="none" stroke="url(#paneEdge)" stroke-width="3"/>
+
+  <!-- question row -->
+  <circle cx="404" cy="488" r="38" fill="url(#badge)"/>
+  <g fill="none" stroke="#2c3fa8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M391 478 C391 463 418 463 418 478 C418 490 404 490 404 501 L404 503"/>
+  </g>
+  <circle cx="404" cy="517" r="6" fill="#2c3fa8"/>
+  <rect x="464" y="474" width="268" height="28" rx="14" fill="#ffffff" opacity=".92"/>
+
+  <!-- streamed answer -->
+  <rect x="368" y="552" width="456" height="1.5" fill="#ffffff" opacity=".12"/>
+  <g>
+    <rect x="368" y="586" width="420" height="18" rx="9" fill="url(#answer)"/>
+    <rect x="368" y="626" width="368" height="18" rx="9" fill="url(#answer)" opacity=".9"/>
+    <rect x="368" y="666" width="260" height="18" rx="9" fill="url(#fade)"/>
+  </g>
+</svg>

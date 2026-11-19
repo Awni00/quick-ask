@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="sheen" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.10"/>
+      <stop offset="0.45" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.35"/>
+      <stop offset="0.25" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="bg2" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E4E8F1"/>
+    </linearGradient>
+    <linearGradient id="ink2" x1="380" y1="200" x2="640" y2="820" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3B4CF5"/>
+      <stop offset="1" stop-color="#0FB3E0"/>
+    </linearGradient>
+    <clipPath id="body"><path d="M285 100H739C841.17 100 924 182.83 924 285V739C924 841.17 841.17 924 739 924H285C182.83 924 100 841.17 100 739V285C100 182.83 182.83 100 285 100Z"/></clipPath>
+  </defs>
+  <path d="M285 100H739C841.17 100 924 182.83 924 285V739C924 841.17 841.17 924 739 924H285C182.83 924 100 841.17 100 739V285C100 182.83 182.83 100 285 100Z" fill="url(#bg2)"/>
+  <g clip-path="url(#body)">
+    <path d="M374.76 351.58 A138 138 0 1 1 512 504 L446 574 L578 574 L506 662" fill="none" stroke="#0A1A4A" stroke-opacity="0.09" stroke-width="88" stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="3" transform="translate(0 16)"/>
+    <circle cx="506" cy="792" r="50" fill="#0A1A4A" fill-opacity="0.09"/>
+    <path d="M374.76 351.58 A138 138 0 1 1 512 504 L446 574 L578 574 L506 662" fill="none" stroke="url(#ink2)" stroke-opacity="1" stroke-width="88" stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="3" transform="translate(0 0)"/>
+    <circle cx="506" cy="776" r="50" fill="url(#ink2)" fill-opacity="1"/>
+  </g>
+  <path d="M285 100H739C841.17 100 924 182.83 924 285V739C924 841.17 841.17 924 739 924H285C182.83 924 100 841.17 100 739V285C100 182.83 182.83 100 285 100Z" fill="url(#sheen)"/>
+  <path d="M285 100H739C841.17 100 924 182.83 924 285V739C924 841.17 841.17 924 739 924H285C182.83 924 100 841.17 100 739V285C100 182.83 182.83 100 285 100Z" fill="none" stroke="url(#rim)" stroke-width="4"/>
+</svg>
