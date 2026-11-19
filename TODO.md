@@ -2,6 +2,9 @@
 
 ## Next
 
+- [ ] **Optional code execution** (Bash in the scratch folder), only with proper
+  sandboxing (no access outside the folder); off by default.
+
 - [ ] **Continue the same session in the full app (⌘O).** Today ⌘O opens a *new*
   Claude chat with the transcript filled in. That's because:
   - Quick Ask runs `claude -p --no-session-persistence`, so there's no saved
@@ -38,6 +41,12 @@
 - [x] Selected text as context: on the hotkey, read the frontmost app's selection
   (Accessibility API, falling back to ⌘C with the clipboard restored); shown as
   a removable card and quoted in the message
+- [x] Tools: web search, page fetching, and file tools confined to a
+  per-conversation scratch folder (CLI restricted mode; no code execution);
+  tool activity shown as a status line
+- [x] Layout: no clipped toolbar on long chats; no resize jumps while streaming
+- [x] Model selector: speed dial (dots from fastest to most capable, active one
+  filled and named; hover previews, tooltips give a hint and the shortcut)
 - [x] Name: keep "Quick Ask"
 - [x] Icon: "interlock", a white "?" whose stem is an amber ⚡ (quick + ask), plus a
   matching menu-bar glyph. Sources in `Resources/Icon/`; other concepts in

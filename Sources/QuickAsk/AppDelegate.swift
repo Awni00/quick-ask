@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settings = Settings.shared
+        ScratchSpace.removeAll()  // leftovers from a crash
         let provider = ProviderRegistry.provider(id: settings.providerID)
         controller = PanelController(store: ConversationStore(provider: provider, settings: settings), settings: settings)
 
@@ -38,6 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self?.controller.snapshotWebView(to: args[i + 1])
             }
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        ScratchSpace.removeAll()
     }
 
     /// Standard text-editing shortcuts (⌘C, ⌘V, ⌘A, ⌘Z) only work in the web

@@ -215,9 +215,10 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
             "context": pendingContext.map(Self.preview) as Any? ?? NSNull(),
             "axHint": !SelectionCapture.isTrusted && !settings.axHintDismissed,
             "pending": store.pending as Any? ?? NSNull(),
+            "status": store.status as Any? ?? NSNull(),
             "error": store.error as Any? ?? NSNull(),
             "model": store.model,
-            "models": store.provider.models.map { ["id": $0.id, "label": $0.label] },
+            "models": store.provider.models.map { ["id": $0.id, "label": $0.label, "hint": $0.hint] },
             "provider": store.provider.displayName,
             "handoff": store.provider.handoff?.appName as Any? ?? NSNull(),
             "showCmdHint": !settings.cmdHintSeen,
@@ -248,7 +249,12 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
             if panel.isVisible { js("QA.focus()") }
         case "height":
             if let value = body["value"] as? Double {
-                contentHeight = CGFloat(value)
+                let height = CGFloat(value)
+                // While an answer streams, only grow: re-rendering markdown and
+                // math can briefly lower the height, which made the panel jump.
+                // The exact height is applied when the answer is done.
+                let streaming = body["streaming"] as? Bool ?? false
+                contentHeight = streaming ? max(contentHeight, height) : height
                 if panel.isVisible { layout() }
             }
         case "send": send(body["text"] as? String ?? "")

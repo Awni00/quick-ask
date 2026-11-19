@@ -59,6 +59,7 @@ final class AgentRunner {
         executable: String,
         request: AgentRequest,
         onText: @escaping (String) -> Void,
+        onStatus: @escaping (String) -> Void = { _ in },
         completion: @escaping (AgentOutcome) -> Void
     ) {
         cancel()
@@ -72,8 +73,9 @@ final class AgentRunner {
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = provider.arguments(for: request)
         process.environment = Executable.environment(removingPrefixes: provider.removedEnvironmentPrefixes)
-        // A neutral folder, so no project's instructions or settings get picked up.
-        process.currentDirectoryURL = FileManager.default.temporaryDirectory
+        // The conversation's scratch folder: no project's instructions or settings
+        // get picked up, and the agent's file tools are confined to it.
+        process.currentDirectoryURL = request.workingDirectory
 
         let stdin = Pipe(), stdout = Pipe(), stderr = Pipe()
         process.standardInput = stdin
@@ -116,6 +118,8 @@ final class AgentRunner {
                     case .text(let piece):
                         answer += piece
                         DispatchQueue.main.async { onText(piece) }
+                    case .status(let status):
+                        DispatchQueue.main.async { onStatus(status) }
                     case .result(let text): finalText = text
                     case .failure(let message): failure = message
                     }

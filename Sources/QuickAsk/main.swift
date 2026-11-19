@@ -48,7 +48,8 @@ if arguments.contains("--login-status") {
     let request = AgentRequest(
         messages: [ChatMessage(role: .user, content: rest.joined(separator: " "))],
         model: model ?? settings.model(for: provider),
-        instructions: Prompt.instructions(extra: settings.instructions)
+        instructions: Prompt.instructions(extra: settings.instructions),
+        workingDirectory: ScratchSpace.make()
     )
     let start = Date()
     var firstText: TimeInterval?
@@ -57,7 +58,12 @@ if arguments.contains("--login-status") {
     runner.run(provider: provider, executable: executable, request: request, onText: { piece in
         if firstText == nil { firstText = Date().timeIntervalSince(start) }
         FileHandle.standardOutput.write(Data(piece.utf8))
+    }, onStatus: { status in
+        FileHandle.standardOutput.write(Data("\n[\(status)]\n".utf8))
     }, completion: { outcome in
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: request.workingDirectory.path)) ?? []
+        print("\n--- scratch files: \(files)")
+        ScratchSpace.remove(request.workingDirectory)
         let total = Date().timeIntervalSince(start)
         switch outcome {
         case .success: print(String(format: "\n--- ok: first text %.2fs, total %.2fs", firstText ?? -1, total))

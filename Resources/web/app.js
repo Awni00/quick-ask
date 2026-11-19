@@ -51,7 +51,8 @@
 
   const icon = (name) => `<svg><use href="#i-${name}"/></svg>`;
   const $ = (id) => document.getElementById(id);
-  const app = $("app"), thread = $("thread"), composer = $("composer"), input = $("input");
+  const app = $("app"), thread = $("thread"), threadInner = $("thread-inner");
+  const composer = $("composer"), input = $("input");
   const sendButton = $("send"), models = $("models"), toast = $("toast");
   const hint = $("hint"), tools = $("tools"), legend = $("legend");
   const handoffButton = $("handoff"), newButton = $("new");
@@ -63,7 +64,6 @@
     context: null, axHint: false,
   };
   let scheduled = false;
-  let modelsOpen = false;
 
   const isLoading = () => state.pending !== null;
   const hasAnswer = () => state.messages.some((m) => m.role === "assistant");
@@ -94,12 +94,15 @@
         `${m.stopped ? '<div class="note">Stopped</div>' : ""}${acts}</div>`;
     });
     if (isLoading()) {
-      html += state.pending
-        ? `<div class="msg assistant">${md.render(state.pending)}</div>`
-        : `<div class="msg assistant thinking"><span></span><span></span><span></span></div>`;
+      // The answer so far, then what the agent is doing (a tool call) or dots.
+      const dots = `<span class="dots"><span></span><span></span><span></span></span>`;
+      const activity = state.status
+        ? `<div class="status">${dots}${escapeHtml(state.status)}</div>`
+        : state.pending ? "" : `<div class="status">${dots}</div>`;
+      html += `<div class="msg assistant">${state.pending ? md.render(state.pending) : ""}${activity}</div>`;
     }
     if (state.error) html += `<div class="error">${escapeHtml(state.error)}</div>`;
-    thread.innerHTML = html;
+    threadInner.innerHTML = html;
 
     // Composer
     const empty = state.messages.length === 0 && !isLoading() && !state.error;
@@ -118,8 +121,8 @@
     hint.hidden = !(state.showCmdHint && empty);
     renderLegend(canHandOff);
 
-    fitThread();
     if (nearBottom || isLoading()) thread.scrollTop = thread.scrollHeight;
+    reportHeight();  // also when only the streaming flag changed
   }
 
   function contextLabel(c) {
@@ -150,18 +153,23 @@
     sendButton.classList.toggle("off", !loading && input.value.trim() === "");
   }
 
-  // Closed: one chip with the current model. Open: one chip per model.
+  // Speed dial: one dot per model, fastest to most capable; the active one is
+  // filled and named. Hovering a dot previews its name.
+  const modelLabel = (id) => state.models.find((m) => m.id === id)?.label ?? id;
   function renderModels() {
-    const current = state.models.find((m) => m.id === state.model);
-    models.classList.toggle("open", modelsOpen);
-    if (!modelsOpen) {
-      models.innerHTML = `<button class="chip" data-model-toggle title="Model (⌘1–${state.models.length})">${escapeHtml(current ? current.label : state.model)} ▾</button>`;
-      return;
-    }
-    models.innerHTML = state.models
-      .map((m, i) =>
-        `<button class="chip${m.id === state.model ? " current" : ""}" data-model="${m.id}" title="⌘${i + 1}">${escapeHtml(m.label)}</button>`)
+    const key = state.models.map((m) => m.id).join() + "|" + state.model;
+    if (models.dataset.key === key) return;  // avoid re-rendering under the mouse
+    models.dataset.key = key;
+    const dots = state.models
+      .map((m, i) => {
+        const tip = `${m.label}${m.hint ? " · " + m.hint : ""} (⌘${i + 1})`;
+        return `<button class="dial-dot${m.id === state.model ? " on" : ""}" data-model="${m.id}"` +
+          ` title="${escapeHtml(tip)}" aria-label="${escapeHtml(m.label)}"><span></span></button>`;
+      })
       .join("");
+    models.innerHTML =
+      `<span class="dial" role="group" aria-label="Model">${dots}</span>` +
+      `<span class="dial-label">${escapeHtml(modelLabel(state.model))}</span>`;
   }
 
   function renderLegend(canHandOff) {
@@ -177,9 +185,13 @@
       .join("");
   }
 
-  // The thread scrolls once the panel reaches its maximum height.
-  function fitThread() {
-    thread.style.maxHeight = Math.max(80, state.maxHeight - composer.offsetHeight) + "px";
+  // The content's natural height: the composer plus the thread's messages
+  // (measured inside the thread, so it doesn't depend on the panel's current size).
+  function naturalHeight() {
+    const threadShown = !document.body.classList.contains("empty");
+    const style = getComputedStyle(thread);
+    const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    return composer.offsetHeight + (threadShown ? threadInner.offsetHeight + padding : 0);
   }
 
   const schedule = () => {
@@ -189,15 +201,22 @@
     }
   };
 
-  // Report content height so the panel can grow or shrink to fit.
+  // Report content height so the panel can grow or shrink to fit. `streaming`
+  // lets Swift avoid shrinking mid-answer (re-rendering can briefly dip).
   let lastHeight = 0;
-  new ResizeObserver(() => {
-    const h = Math.ceil(app.getBoundingClientRect().height);
-    if (h !== lastHeight) {
+  let lastStreaming = false;
+  function reportHeight() {
+    const h = Math.min(Math.ceil(naturalHeight()), state.maxHeight);
+    const streaming = isLoading();
+    if (h !== lastHeight || streaming !== lastStreaming) {
       lastHeight = h;
-      post("height", { value: h });
+      lastStreaming = streaming;
+      post("height", { value: h, streaming });
     }
-  }).observe(app);
+  }
+  const observer = new ResizeObserver(reportHeight);
+  observer.observe(threadInner);
+  observer.observe(composer);
 
   function autosize() {
     input.style.height = "auto";
@@ -228,9 +247,6 @@
     const m = state.models.find((m) => m.id === id);
     if (!m) return;
     post("model", { id });
-    modelsOpen = false;
-    flash(m.label);
-    schedule();
     input.focus();
   }
 
@@ -249,10 +265,6 @@
       clearTimeout(cmdTimer);
       cmdTimer = setTimeout(() => {
         document.body.classList.add("cmd");
-        if (modelsOpen) {
-          modelsOpen = false;
-          renderModels();
-        }
         if (state.showCmdHint) {
           state.showCmdHint = false;
           post("cmdHintSeen");
@@ -278,12 +290,7 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       e.preventDefault();
-      if (modelsOpen) {
-        modelsOpen = false;
-        schedule();
-      } else {
-        post("close");
-      }
+      post("close");
       return;
     }
     if (!e.metaKey || e.ctrlKey || e.altKey) return;
@@ -322,14 +329,21 @@
   });
 
   models.addEventListener("click", (e) => {
-    const button = e.target.closest("button");
-    if (!button) return;
-    if (button.hasAttribute("data-model-toggle")) {
-      modelsOpen = true;
-      schedule();
-    } else {
-      chooseModel(button.dataset.model);
-    }
+    const dot = e.target.closest("[data-model]");
+    if (dot) chooseModel(dot.dataset.model);
+  });
+  models.addEventListener("mouseover", (e) => {
+    const dot = e.target.closest("[data-model]");
+    const label = models.querySelector(".dial-label");
+    if (!dot || !label) return;
+    label.textContent = modelLabel(dot.dataset.model);
+    label.classList.toggle("preview", dot.dataset.model !== state.model);
+  });
+  models.addEventListener("mouseleave", () => {
+    const label = models.querySelector(".dial-label");
+    if (!label) return;
+    label.textContent = modelLabel(state.model);
+    label.classList.remove("preview");
   });
 
   contextCard.addEventListener("click", (e) => {
@@ -385,7 +399,6 @@
     },
     clearInput() {
       input.value = "";
-      modelsOpen = false;
       autosize();
       schedule();
     },

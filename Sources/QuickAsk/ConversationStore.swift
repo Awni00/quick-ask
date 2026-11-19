@@ -1,12 +1,15 @@
 import Foundation
 
-/// The conversation shown in the popup. Kept in memory only; nothing is
-/// written to disk, and each request runs an unsaved CLI session.
+/// The conversation shown in the popup. Kept in memory only, and each request
+/// runs an unsaved CLI session; the only thing on disk is the conversation's
+/// scratch folder, which is deleted with the conversation.
 /// All methods are called on the main thread.
 final class ConversationStore {
     private(set) var messages: [ChatMessage] = []
     private(set) var pending: String?  // streaming answer; nil when idle
+    private(set) var status: String?   // current tool activity, while streaming
     private(set) var error: String?
+    private var scratch: URL?
     private(set) var model: String
     let provider: AgentProvider
 
@@ -58,7 +61,10 @@ final class ConversationStore {
         runner.cancel()
         messages = []
         pending = nil
+        status = nil
         error = nil
+        ScratchSpace.remove(scratch)
+        scratch = nil
         onChange?()
     }
 
@@ -67,13 +73,16 @@ final class ConversationStore {
         let current = generation
         messages = history
         pending = ""
+        status = nil
         error = nil
         onChange?()
 
+        if scratch == nil { scratch = ScratchSpace.make() }
         let request = AgentRequest(
             messages: history,
             model: model,
-            instructions: Prompt.instructions(extra: settings.instructions)
+            instructions: Prompt.instructions(extra: settings.instructions),
+            workingDirectory: scratch!
         )
         let executable = Executable.resolve(
             override: settings.executableOverride(for: provider),
@@ -87,12 +96,19 @@ final class ConversationStore {
             onText: { [weak self] piece in
                 guard let self, current == self.generation else { return }
                 self.pending = (self.pending ?? "") + piece
+                if !piece.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { self.status = nil }
+                self.onChange?()
+            },
+            onStatus: { [weak self] status in
+                guard let self, current == self.generation else { return }
+                self.status = status
                 self.onChange?()
             },
             completion: { [weak self] outcome in
                 guard let self, current == self.generation else { return }
                 let partial = self.pending ?? ""
                 self.pending = nil
+                self.status = nil
                 switch outcome {
                 case .success(let text):
                     self.messages.append(ChatMessage(role: .assistant, content: text))

@@ -23,19 +23,25 @@ struct ChatMessage: Equatable {
     }
 }
 
+/// Providers list their models from fastest to most capable; the popup's
+/// speed dial shows them in that order.
 struct ModelOption {
     let id: String     // value passed to the CLI
     let label: String  // shown in the popup
+    var hint: String = ""  // a few words for the tooltip, e.g. "fastest"
 }
 
 struct AgentRequest {
     var messages: [ChatMessage]
     var model: String?
     var instructions: String
+    /// The conversation's scratch folder (see ScratchSpace).
+    var workingDirectory: URL
 }
 
 enum AgentEvent {
     case text(String)      // a streamed piece of the answer
+    case status(String)    // what the agent is doing, e.g. "Searching the web: …"
     case result(String)    // the CLI reported the final answer
     case failure(String)   // the CLI reported an error
 }
@@ -88,7 +94,15 @@ enum Prompt {
     static let baseInstructions = """
         You answer quick questions asked from a desktop popup. Be concise and direct. \
         Answer in Markdown; use fenced code blocks for code. Write math in LaTeX with \
-        $...$ for inline and $$...$$ for display math. You have no tools.
+        $...$ for inline and $$...$$ for display math.
+
+        You can search the web and fetch pages. Use them when the question needs current, \
+        specific or checkable information, not for things you reliably know. When you use \
+        the web, end with the sources as Markdown links.
+
+        Your working directory is a scratch folder for this conversation: you may keep \
+        notes or files there across follow-ups. It is deleted when the conversation ends. \
+        You cannot run code or access other files.
         """
 
     static func instructions(extra: String) -> String {

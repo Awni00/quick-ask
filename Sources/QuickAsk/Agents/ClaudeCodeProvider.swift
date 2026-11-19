@@ -1,14 +1,17 @@
 import Foundation
 
 /// Claude Code CLI (`claude -p`), using the user's claude.ai subscription.
-/// Sessions are not saved; tools, MCP servers and user settings are turned off.
+///
+/// Runs in the CLI's restricted mode with a small tool set: web search, fetching
+/// pages, and file tools confined to the conversation's scratch folder. No tool
+/// can run code. Sessions are not saved; MCP servers and user settings are off.
 struct ClaudeCodeProvider: AgentProvider {
     let id = "claude"
     let displayName = "Claude"
     let models = [
-        ModelOption(id: "haiku", label: "Haiku"),
-        ModelOption(id: "sonnet", label: "Sonnet"),
-        ModelOption(id: "opus", label: "Opus"),
+        ModelOption(id: "haiku", label: "Haiku", hint: "fastest"),
+        ModelOption(id: "sonnet", label: "Sonnet", hint: "balanced"),
+        ModelOption(id: "opus", label: "Opus", hint: "most capable"),
     ]
     let defaultModel = "sonnet"
     let executableCandidates = ["~/.local/bin/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"]
@@ -17,6 +20,10 @@ struct ClaudeCodeProvider: AgentProvider {
     // hand-off), and an ANTHROPIC_API_KEY would bill the API instead of the
     // subscription.
     let removedEnvironmentPrefixes = ["CLAUDE", "ANTHROPIC_"]
+
+    /// The only tools the agent gets. `--restricted` confines the file tools to
+    /// the working directory (the scratch folder).
+    static let tools = ["WebSearch", "WebFetch", "Read", "Write", "Edit", "Glob", "Grep"]
 
     // The Claude desktop app opens claude://claude.ai/new?q=... as a new chat with
     // the text filled in (it keeps at most 14,336 characters). Without the app,
@@ -32,17 +39,24 @@ struct ClaudeCodeProvider: AgentProvider {
     ])
 
     func arguments(for request: AgentRequest) -> [String] {
+        let tools = Self.tools.joined(separator: ",")
         var args = [
             "-p",
             "--no-session-persistence",
             "--output-format", "stream-json",
             "--include-partial-messages",
             "--verbose",
-            "--tools=",
+            // Restricted mode: no code-running tools, file tools confined to the
+            // working directory, settings files ignored.
+            "--restricted",
+            "--tools", tools,
+            "--allowedTools", tools,
+            // Anything outside the allowed tools is refused, not left waiting
+            // for a permission prompt nobody can answer.
+            "--permission-prompts", "none",
             "--strict-mcp-config",
-            // Skip user/project settings: their plugins and hooks don't belong in a
-            // quick question, and loading them can touch protected folders
-            // (macOS then asks Quick Ask for Documents access).
+            // Also skip settings explicitly: their plugins and hooks don't belong
+            // in a quick question, and loading them can touch protected folders.
             "--setting-sources=",
             "--system-prompt", request.instructions,
         ]
@@ -54,6 +68,9 @@ struct ClaudeCodeProvider: AgentProvider {
 
     /// Parses `--output-format stream-json` lines.
     final class Parser: AgentOutputParser {
+        private var sawText = false
+        private var toolSinceText = false
+
         func consume(line: String) -> [AgentEvent] {
             guard let data = line.data(using: .utf8),
                   let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -62,13 +79,29 @@ struct ClaudeCodeProvider: AgentProvider {
 
             switch type {
             case "stream_event":
-                guard let event = obj["event"] as? [String: Any],
-                      event["type"] as? String == "content_block_delta",
+                guard let event = obj["event"] as? [String: Any] else { return [] }
+                // Text after a tool call starts a new paragraph.
+                if event["type"] as? String == "content_block_start",
+                   (event["content_block"] as? [String: Any])?["type"] as? String == "text",
+                   sawText, toolSinceText {
+                    toolSinceText = false
+                    return [.text("\n\n")]
+                }
+                guard event["type"] as? String == "content_block_delta",
                       let delta = event["delta"] as? [String: Any],
                       delta["type"] as? String == "text_delta",
                       let text = delta["text"] as? String
                 else { return [] }
+                sawText = true
                 return [.text(text)]
+            case "assistant":
+                // A finished assistant message; its tool calls carry full inputs.
+                let content = (obj["message"] as? [String: Any])?["content"] as? [[String: Any]] ?? []
+                return content.compactMap { block in
+                    guard block["type"] as? String == "tool_use", let name = block["name"] as? String else { return nil }
+                    toolSinceText = true
+                    return .status(Self.describe(tool: name, input: block["input"] as? [String: Any] ?? [:]))
+                }
             case "result":
                 let text = obj["result"] as? String ?? ""
                 if obj["is_error"] as? Bool == true {
@@ -77,6 +110,24 @@ struct ClaudeCodeProvider: AgentProvider {
                 return [.result(text)]
             default:
                 return []
+            }
+        }
+
+        /// A short, human description of a tool call for the popup.
+        static func describe(tool: String, input: [String: Any]) -> String {
+            func file(_ key: String) -> String {
+                ((input[key] as? String).map { ($0 as NSString).lastPathComponent }) ?? "a file"
+            }
+            switch tool {
+            case "WebSearch":
+                return "Searching the web: " + (input["query"] as? String ?? "")
+            case "WebFetch":
+                let url = (input["url"] as? String).flatMap(URL.init(string:))
+                return "Reading " + (url?.host ?? "a web page")
+            case "Read": return "Reading notes: " + file("file_path")
+            case "Write", "Edit": return "Writing notes: " + file("file_path")
+            case "Glob", "Grep": return "Searching notes"
+            default: return "Using \(tool)"
             }
         }
     }

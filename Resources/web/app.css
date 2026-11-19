@@ -28,10 +28,17 @@ html, body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
-#app { display: flex; flex-direction: column; }
+*, *::before, *::after { box-sizing: border-box; }
+
+/* The page always fills the panel: the thread takes the remaining space and
+   scrolls, and the composer stays whole at the bottom. The panel's size comes
+   from the content's natural height, which app.js measures and reports. */
+html, body { height: 100%; }
+#app { display: flex; flex-direction: column; height: 100%; }
 
 /* Thread */
-#thread { overflow-y: auto; padding: 14px 18px 2px; }
+#thread { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 18px 2px; }
+#composer { flex: none; margin-top: auto; }
 body.empty #thread { display: none; }
 
 .msg { margin: 0 0 14px; }
@@ -94,13 +101,19 @@ pre code, pre code.hljs { background: none; padding: 0; }
 
 .note { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .error { color: var(--error); font-size: 13px; margin: 0 0 14px; white-space: pre-wrap; }
-.thinking span {
-  display: inline-block; width: 6px; height: 6px; margin-right: 4px;
-  border-radius: 50%; background: var(--muted);
+/* Activity while answering: pulsing dots, plus the current tool call if any */
+.status {
+  display: flex; align-items: center; gap: 8px; margin: 2px 0 0;
+  font-size: 12.5px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dots { display: inline-flex; gap: 4px; flex: none; }
+.dots span {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
   animation: pulse 1s infinite ease-in-out;
 }
-.thinking span:nth-child(2) { animation-delay: 0.15s; }
-.thinking span:nth-child(3) { animation-delay: 0.3s; }
+.dots span:nth-child(2) { animation-delay: 0.15s; }
+.dots span:nth-child(3) { animation-delay: 0.3s; }
 @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 
 /* Actions under an answer: faint under the latest, on hover for earlier ones */
@@ -177,15 +190,19 @@ textarea::placeholder { color: var(--muted); }
   font-size: 11.5px; color: var(--muted);
   white-space: nowrap;
 }
-.models { display: flex; gap: 2px; }
-.chip {
-  font-size: 11.5px; color: var(--muted);
-  border: 1px solid var(--border); border-radius: 6px;
-  padding: 1px 8px; line-height: 18px;
+/* Model speed dial: dots from fastest to most capable, active one filled */
+.models { display: flex; align-items: center; }
+.dial { display: inline-flex; align-items: center; }
+.dial-dot { width: 15px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
+.dial-dot span {
+  width: 7px; height: 7px; border-radius: 50%;
+  border: 1.25px solid var(--muted);
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
 }
-.chip:hover { color: var(--text); }
-.models.open .chip { border-color: transparent; }
-.models.open .chip.current { border-color: var(--border); color: var(--text); background: var(--bubble); }
+.dial-dot:hover span { border-color: var(--text); transform: scale(1.15); }
+.dial-dot.on span { background: var(--text); border-color: var(--text); }
+.dial-label { font-size: 12px; color: var(--muted); margin-left: 5px; }
+.dial-label.preview { color: var(--text); }
 #toast { color: var(--text); }
 .hint, .tools, .legend { margin-left: auto; display: flex; align-items: center; gap: 2px; }
 .legend { gap: 9px; display: none; font-size: 11px; }
