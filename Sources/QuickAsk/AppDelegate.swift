@@ -1,11 +1,10 @@
 import AppKit
-import ServiceManagement
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: PanelController!
     private var hotKey: HotKey?
     private var statusItem: NSStatusItem!
-    private var loginMenuItem: NSMenuItem!
+    private var askMenuItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settings = Settings.shared
@@ -14,16 +13,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller = PanelController(store: ConversationStore(provider: provider, settings: settings), settings: settings)
 
         installEditMenu()
-        installStatusItem(hotkey: settings.hotkey)
+        installStatusItem()
         LoginItem.apply()
+        registerHotKey()
 
-        hotKey = HotKey(spec: settings.hotkey) { [weak self] in self?.controller.toggleFromHotkey() }
-        if hotKey == nil {
-            NSLog("QuickAsk: couldn't register hotkey \"\(settings.hotkey)\"")
+        let center = NotificationCenter.default
+        center.addObserver(forName: .quickAskHotkeyChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.registerHotKey()
+        }
+        // While the settings window records a new hotkey, the current one must
+        // not fire (it would toggle the popup instead of being recorded).
+        center.addObserver(forName: .quickAskSuspendHotkey, object: nil, queue: .main) { [weak self] note in
+            if note.object as? Bool == true { self?.hotKey = nil } else { self?.registerHotKey() }
         }
 
         // For testing: `open -a "Quick Ask" --args --show` opens the panel on launch,
-        // and `--ask "question"` also sends a question.
+        // `--ask "question"` also sends a question, and `--settings` opens settings.
         let args = CommandLine.arguments
         if args.contains("--show") || args.contains("--ask") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
@@ -32,6 +37,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     self?.controller.ask(args[i + 1])
                 }
             }
+        }
+        if args.contains("--settings") { SettingsWindowController.shared.show() }
+        // For testing: `--ax-status path` writes whether macOS trusts this app for
+        // Accessibility (only meaningful when launched via `open`, not a shell).
+        if let i = args.firstIndex(of: "--ax-status"), i + 1 < args.count {
+            try? "trusted=\(SelectionCapture.isTrusted)\n".write(toFile: args[i + 1], atomically: true, encoding: .utf8)
         }
         // For testing: `--snapshot path` writes the web view's pixels after 10 s.
         if let i = args.firstIndex(of: "--snapshot"), i + 1 < args.count {
@@ -45,8 +56,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ScratchSpace.removeAll()
     }
 
+    private func registerHotKey() {
+        let spec = Settings.shared.hotkey
+        hotKey = nil  // unregister the old one first
+        hotKey = HotKey(spec: spec) { [weak self] in self?.controller.toggleFromHotkey() }
+        if hotKey == nil { NSLog("QuickAsk: couldn't register hotkey \"\(spec)\"") }
+        askMenuItem?.title = "Ask… (\(HotKey.displayLabel(spec)))"
+    }
+
     /// Standard text-editing shortcuts (⌘C, ⌘V, ⌘A, ⌘Z) only work in the web
-    /// view when the app has an Edit menu, even though it's never shown.
+    /// view and the settings window when the app has an Edit menu, even though
+    /// it's never shown.
     private func installEditMenu() {
         let main = NSMenu()
         let appItem = NSMenuItem()
@@ -65,27 +85,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editItem.submenu = edit
         main.addItem(editItem)
+
+        let windowItem = NSMenuItem()
+        let window = NSMenu(title: "Window")
+        window.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        windowItem.submenu = window
+        main.addItem(windowItem)
         NSApp.mainMenu = main
     }
 
-    private func installStatusItem(hotkey: String) {
+    private func installStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = Self.menuBarIcon()
 
         let menu = NSMenu()
-        let ask = NSMenuItem(title: "Ask… (\(hotkey))", action: #selector(showPanel), keyEquivalent: "")
-        ask.target = self
-        menu.addItem(ask)
+        askMenuItem = NSMenuItem(title: "Ask…", action: #selector(showPanel), keyEquivalent: "")
+        askMenuItem.target = self
+        menu.addItem(askMenuItem)
         let new = NSMenuItem(title: "New Chat", action: #selector(newChat), keyEquivalent: "")
         new.target = self
         menu.addItem(new)
         menu.addItem(.separator())
-        loginMenuItem = NSMenuItem(title: "Open at Login", action: #selector(toggleLoginItem), keyEquivalent: "")
-        loginMenuItem.target = self
-        menu.addItem(loginMenuItem)
+        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit Quick Ask", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
-        menu.delegate = self
+        menu.addItem(withTitle: "Quit Quick Ask", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
     }
 
@@ -102,33 +127,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return NSImage(systemSymbolName: "questionmark", accessibilityDescription: "Quick Ask")
     }
 
-    /// Shows the login item's real state each time the menu opens.
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        if !LoginItem.isInstalledCopy {
-            loginMenuItem.title = "Open at Login (install to Applications first)"
-            loginMenuItem.state = .off
-            loginMenuItem.isEnabled = false
-        } else if LoginItem.needsApproval {
-            loginMenuItem.title = "Open at Login (approve in System Settings)"
-            loginMenuItem.state = .mixed
-        } else {
-            loginMenuItem.title = "Open at Login"
-            loginMenuItem.state = LoginItem.isEnabled ? .on : .off
-        }
-    }
-
-    @objc private func toggleLoginItem() {
-        if LoginItem.needsApproval {
-            SMAppService.openSystemSettingsLoginItems()
-            return
-        }
-        LoginItem.set(!LoginItem.isEnabled)
-    }
-
     @objc private func showPanel() { controller.show() }
 
     @objc private func newChat() {
         controller.newChat()
         controller.show()
     }
+
+    @objc private func openSettings() { SettingsWindowController.shared.show() }
 }

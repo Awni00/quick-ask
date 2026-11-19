@@ -1,3 +1,4 @@
+import AppKit
 import Carbon.HIToolbox
 
 /// A global hotkey via Carbon's RegisterEventHotKey, which needs no
@@ -38,6 +39,35 @@ final class HotKey {
             HotKey.handlers[hotKeyID.id]?()
             return noErr
         }, 1, &eventType, nil, nil)
+    }
+
+    /// A spec ("ctrl+option+k") from a key press, for the settings window's
+    /// recorder. Needs ⌘, ⌥ or ⌃ (⇧ alone isn't enough) and a supported key.
+    static func spec(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> String? {
+        guard let key = keyCodes.first(where: { $0.value == UInt32(keyCode) })?.key else { return nil }
+        var parts: [String] = []
+        if modifiers.contains(.control) { parts.append("ctrl") }
+        if modifiers.contains(.option) { parts.append("option") }
+        if modifiers.contains(.shift) { parts.append("shift") }
+        if modifiers.contains(.command) { parts.append("cmd") }
+        guard parts.contains(where: { $0 != "shift" }) else { return nil }
+        return (parts + [key]).joined(separator: "+")
+    }
+
+    /// "option+space" → "⌥Space", with modifiers in the standard ⌃⌥⇧⌘ order.
+    static func displayLabel(_ spec: String) -> String {
+        let parts = spec.lowercased().split(separator: "+").map { $0.trimmingCharacters(in: .whitespaces) }
+        let symbols: [(Set<String>, String)] = [
+            (["ctrl", "control"], "⌃"), (["opt", "option", "alt"], "⌥"),
+            (["shift"], "⇧"), (["cmd", "command"], "⌘"),
+        ]
+        var label = symbols.filter { names, _ in parts.contains { names.contains($0) } }.map(\.1).joined()
+        let modifierNames = symbols.reduce(Set<String>()) { $0.union($1.0) }
+        if let key = parts.last(where: { !modifierNames.contains($0) }) {
+            let names = ["space": "Space", "return": "↩", "tab": "⇥", "escape": "⎋"]
+            label += names[key] ?? key.uppercased()
+        }
+        return label
     }
 
     static func parse(_ spec: String) -> (UInt32, UInt32)? {

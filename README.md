@@ -29,13 +29,17 @@ it's listed in System Settings → General → Login Items).
 | ⌘N | New chat |
 | ⌘O | Continue in the Claude app (new chat with the conversation filled in; if it's too long, older turns are left out and the full text is copied) |
 | ⌘1–⌘3 | Haiku / Sonnet / Opus |
+| ⌘, | Settings |
 | Esc | Hide |
+| Hold ⌘ | Show the shortcuts that apply |
 
 ## Settings
 
-There's no settings window yet; use `defaults write local.QuickAsk <key> <value>`.
-See `Sources/QuickAsk/Settings.swift` for the keys (hotkey, reopen timeout, extra
-instructions, model, CLI path).
+Open Settings from the ✦ menu-bar menu or with ⌘, in the popup: hotkey, open at
+login, how long to keep a conversation, default model, web search, the CLI's path
+and sign-in status, extra instructions, and the Accessibility permission.
+The values live in the `local.QuickAsk` defaults domain (keys in
+`Sources/QuickAsk/Settings.swift`).
 
 ## Layout
 

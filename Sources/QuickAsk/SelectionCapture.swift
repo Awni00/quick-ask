@@ -21,7 +21,20 @@ enum SelectionCapture {
     static var isTrusted: Bool { AXIsProcessTrusted() }
 
     /// Shows the system prompt and opens the Accessibility settings page.
+    ///
+    /// If Quick Ask is listed there but not trusted, the entry belongs to an
+    /// earlier build's signature; it looks enabled but doesn't apply. Clearing
+    /// Quick Ask's own entry first makes macOS add a fresh one.
     static func requestPermission() {
+        if !isTrusted, let bundleID = Bundle.main.bundleIdentifier {
+            let reset = Process()
+            reset.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+            reset.arguments = ["reset", "Accessibility", bundleID]
+            reset.standardOutput = FileHandle.nullDevice
+            reset.standardError = FileHandle.nullDevice
+            try? reset.run()
+            reset.waitUntilExit()
+        }
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {

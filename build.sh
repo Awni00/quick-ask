@@ -19,7 +19,11 @@ if [[ $ICON/AppIcon.svg -nt $ICON/AppIcon.icns || $ICON/MenuBarIcon.svg -nt $ICO
   swift tools/render-icons.swift $ICON/AppIcon.svg $ICON/MenuBarIcon.svg $ICON
 fi
 cp $ICON/AppIcon.icns $ICON/MenuBarIcon.png "$APP/Contents/Resources/"
-codesign --force --sign - "$APP"  # ad-hoc signature, for this Mac only
+# Ad-hoc signature (this Mac only) with a fixed designated requirement. macOS
+# remembers permissions such as Accessibility against that requirement; the
+# default ad-hoc one names this exact build, so every rebuild lost the grant.
+# Matching on the bundle identifier keeps grants across rebuilds.
+codesign --force --sign - -r='designated => identifier "local.QuickAsk"' "$APP"
 echo "Built $APP"
 
 if [[ "${1:-}" == "--install" ]]; then

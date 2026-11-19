@@ -37,6 +37,14 @@ struct AgentRequest {
     var instructions: String
     /// The conversation's scratch folder (see ScratchSpace).
     var workingDirectory: URL
+    /// Whether the agent may search the web and fetch pages.
+    var allowWeb = true
+}
+
+/// Whether the CLI is signed in, for the settings window.
+struct SignInStatus {
+    var signedIn: Bool
+    var expires: Date?
 }
 
 enum AgentEvent {
@@ -68,6 +76,9 @@ protocol AgentProvider {
     var handoff: HandoffTarget? { get }
 
     func arguments(for request: AgentRequest) -> [String]
+    /// Asks the CLI whether it's signed in (blocking; call off the main thread).
+    /// nil if the provider can't tell.
+    func signInStatus(executable: String) -> SignInStatus?
     /// Text written to the CLI's stdin (the prompt).
     func standardInput(for request: AgentRequest) -> String
     func makeParser() -> AgentOutputParser
@@ -76,6 +87,7 @@ protocol AgentProvider {
 extension AgentProvider {
     var removedEnvironmentPrefixes: [String] { [] }
     var handoff: HandoffTarget? { nil }
+    func signInStatus(executable: String) -> SignInStatus? { nil }
 
     func standardInput(for request: AgentRequest) -> String {
         Prompt.transcript(request.messages)
@@ -95,19 +107,30 @@ enum Prompt {
         You answer quick questions asked from a desktop popup. Be concise and direct. \
         Answer in Markdown; use fenced code blocks for code. Write math in LaTeX with \
         $...$ for inline and $$...$$ for display math.
+        """
 
+    static let webInstructions = """
         You can search the web and fetch pages. Use them when the question needs current, \
         specific or checkable information, not for things you reliably know. When you use \
         the web, end with the sources as Markdown links.
+        """
 
+    static let noWebInstructions = """
+        You can't access the web; answer from what you know and say when something may \
+        be out of date.
+        """
+
+    static let scratchInstructions = """
         Your working directory is a scratch folder for this conversation: you may keep \
         notes or files there across follow-ups. It is deleted when the conversation ends. \
         You cannot run code or access other files.
         """
 
-    static func instructions(extra: String) -> String {
+    static func instructions(extra: String, web: Bool = true) -> String {
         let extra = extra.trimmingCharacters(in: .whitespacesAndNewlines)
-        return extra.isEmpty ? baseInstructions : baseInstructions + "\n\n" + extra
+        return [baseInstructions, web ? webInstructions : noWebInstructions, scratchInstructions, extra]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
     }
 
     /// A single question is sent as-is; a longer conversation becomes a transcript,

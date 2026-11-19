@@ -1,12 +1,34 @@
 import AppKit
 import ServiceManagement
+import SwiftUI
 
 // Writing a prompt to a CLI that has already exited must not kill the app.
 signal(SIGPIPE, SIG_IGN)
 
 let arguments = CommandLine.arguments
 
-if arguments.contains("--login-status") {
+if let index = arguments.firstIndex(of: "--settings-snapshot"), index + 1 < arguments.count {
+    // QuickAsk --settings-snapshot out.png [dark]: renders the settings window's
+    // content offscreen (for checking the layout without a screen capture).
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
+    if arguments.contains("dark") { app.appearance = NSAppearance(named: .darkAqua) }
+    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 800),
+                          styleMask: [.titled], backing: .buffered, defer: false)
+    let host = NSHostingView(rootView: SettingsView())
+    window.contentView = host
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+        let size = host.fittingSize
+        window.setContentSize(size)
+        host.layoutSubtreeIfNeeded()
+        let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds)!
+        host.cacheDisplay(in: host.bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: arguments[index + 1]))
+        print("wrote \(arguments[index + 1]) \(Int(size.width))×\(Int(size.height))")
+        exit(0)
+    }
+    app.run()
+} else if arguments.contains("--login-status") {
     // QuickAsk --login-status: prints the login item's state (run the copy in Applications).
     let names = [0: "notRegistered", 1: "enabled", 2: "requiresApproval", 3: "notFound"]
     let status = SMAppService.mainApp.status

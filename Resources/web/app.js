@@ -142,6 +142,7 @@
         `<button class="icon" data-clear-context aria-label="Remove selection" title="Remove">${icon("x")}</button>`;
     }
     axHint.hidden = !(state.axHint && !c && state.messages.length === 0);
+    if (state.hotkeyLabel) $("hotkey-label").textContent = state.hotkeyLabel;
   }
 
   // Send turns into stop while an answer streams; faded when there's nothing to send.
@@ -179,6 +180,7 @@
     if (state.messages.length) items.push(["N", "new"]);
     if (state.models.length) items.push([`1–${state.models.length}`, "model"]);
     if (isLoading()) items.push([".", "stop"]);
+    if (!state.messages.length) items.push([",", "settings"]);
     items.push(["esc", "close", true]);
     legend.innerHTML = items
       .map(([key, label, plain]) => `<span><kbd>${plain ? "" : "⌘"}${key}</kbd>${label}</span>`)
@@ -298,6 +300,9 @@
     if (key === "n") {
       e.preventDefault();
       post("newChat");
+    } else if (key === ",") {
+      e.preventDefault();
+      post("settings");
     } else if (key === "o") {
       e.preventDefault();
       if (state.handoff && state.messages.length > 0) post("handoff");

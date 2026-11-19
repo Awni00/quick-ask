@@ -56,6 +56,14 @@ final class ConversationStore {
         onChange?()
     }
 
+    /// Picks up a default model changed in the settings window.
+    func reloadModel() {
+        let saved = settings.model(for: provider)
+        guard saved != model else { return }
+        model = saved
+        onChange?()
+    }
+
     func reset() {
         generation += 1
         runner.cancel()
@@ -81,8 +89,9 @@ final class ConversationStore {
         let request = AgentRequest(
             messages: history,
             model: model,
-            instructions: Prompt.instructions(extra: settings.instructions),
-            workingDirectory: scratch!
+            instructions: Prompt.instructions(extra: settings.instructions, web: settings.webSearch),
+            workingDirectory: scratch!,
+            allowWeb: settings.webSearch
         )
         let executable = Executable.resolve(
             override: settings.executableOverride(for: provider),

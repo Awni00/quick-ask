@@ -18,8 +18,6 @@
     a Claude Code session: `claude --resume <id>` in a terminal, or a
     `claude://code/...` link in the desktop app, if one can open a specific session.
   - Check whether claude.ai or the desktop app gains a way to import a conversation.
-- [ ] **Settings window** for the hotkey, model, reopen timeout and extra
-  instructions (today: `defaults write local.QuickAsk …`, see `Settings.swift`).
 - [ ] **Second provider (e.g. Codex).** Write a provider in `Sources/QuickAsk/Agents/`
   and register it in `ProviderRegistry`; add a way to choose the provider.
 
@@ -28,8 +26,6 @@
 - [ ] Show a clear message when the CLI is logged out ("run `claude auth login`")
   instead of the CLI's raw error.
 - [ ] Remember the panel position if it's dragged.
-- [ ] Stable code signature (e.g. a local self-signed certificate) so rebuilds
-  don't reset the Accessibility permission.
 - [ ] Optional permission-free alternatives for selected text: a Services menu
   item, or a clipboard shortcut.
 
@@ -47,6 +43,13 @@
 - [x] Layout: no clipped toolbar on long chats; no resize jumps while streaming
 - [x] Model selector: speed dial (dots from fastest to most capable, active one
   filled and named; hover previews, tooltips give a hint and the shortcut)
+- [x] Settings window (⌘, or the menu-bar menu): hotkey recorder, open at login,
+  keep-conversation duration, default model, web search, CLI path and sign-in
+  status, extra instructions, Accessibility status
+- [x] Accessibility nudge redesigned as a feature card ("Ask about selected text")
+- [x] Permissions survive rebuilds: builds are signed with a fixed designated
+  requirement (`identifier "local.QuickAsk"`); checked across two rebuilds with
+  different code hashes
 - [x] Name: keep "Quick Ask"
 - [x] Icon: "interlock", a white "?" whose stem is an amber ⚡ (quick + ask), plus a
   matching menu-bar glyph. Sources in `Resources/Icon/`; other concepts in

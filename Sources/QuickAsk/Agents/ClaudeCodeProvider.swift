@@ -39,7 +39,8 @@ struct ClaudeCodeProvider: AgentProvider {
     ])
 
     func arguments(for request: AgentRequest) -> [String] {
-        let tools = Self.tools.joined(separator: ",")
+        let webTools: Set = ["WebSearch", "WebFetch"]
+        let tools = Self.tools.filter { request.allowWeb || !webTools.contains($0) }.joined(separator: ",")
         var args = [
             "-p",
             "--no-session-persistence",
@@ -62,6 +63,28 @@ struct ClaudeCodeProvider: AgentProvider {
         ]
         if let model = request.model { args += ["--model", model] }
         return args
+    }
+
+    /// `claude auth status` prints JSON with `loggedIn` and `loginExpiresAt`.
+    func signInStatus(executable: String) -> SignInStatus? {
+        guard FileManager.default.isExecutableFile(atPath: executable) else { return nil }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = ["auth", "status"]
+        process.environment = Executable.environment(removingPrefixes: removedEnvironmentPrefixes)
+        process.currentDirectoryURL = FileManager.default.temporaryDirectory
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        process.standardInput = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return nil }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let expires = (json["loginExpiresAt"] as? String).flatMap { formatter.date(from: $0) }
+        return SignInStatus(signedIn: json["loggedIn"] as? Bool ?? false, expires: expires)
     }
 
     func makeParser() -> AgentOutputParser { Parser() }

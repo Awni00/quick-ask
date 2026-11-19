@@ -86,6 +86,12 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
 
         panel.delegate = self
         store.onChange = { [weak self] in self?.pushState() }
+        NotificationCenter.default.addObserver(forName: .quickAskModelChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.store.reloadModel()
+        }
+        NotificationCenter.default.addObserver(forName: .quickAskHotkeyChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.pushState()  // the hint shows the hotkey
+        }
         loadPage()
     }
 
@@ -130,8 +136,10 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
     /// `selection` is attached to the next question, unless it's the same text
     /// that was captured last time (so reopening doesn't re-attach it).
     func show(selection: AttachedContext? = nil) {
-        if let lastHidden, !store.isLoading,
-           Date().timeIntervalSince(lastHidden) > settings.reopenMinutes * 60 {
+        // reopenMinutes: < 0 keeps the conversation until ⌘N; 0 never keeps it.
+        let keep = settings.reopenMinutes
+        if let lastHidden, !store.isLoading, keep >= 0,
+           Date().timeIntervalSince(lastHidden) > keep * 60 {
             store.reset()
             pendingContext = nil
         }
@@ -222,6 +230,7 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
             "provider": store.provider.displayName,
             "handoff": store.provider.handoff?.appName as Any? ?? NSNull(),
             "showCmdHint": !settings.cmdHintSeen,
+            "hotkeyLabel": HotKey.displayLabel(settings.hotkey),
             "maxHeight": maxHeight,
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: state),
@@ -275,6 +284,9 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
         case "copyAnswer": copy(store.lastAnswer)
         case "close": hide()
         case "handoff": handOff()
+        case "settings":
+            hide()
+            SettingsWindowController.shared.show()
         case "cmdHintSeen": settings.cmdHintSeen = true
         case "open":
             if let s = body["url"] as? String, let url = URL(string: s) { openExternally(url) }
