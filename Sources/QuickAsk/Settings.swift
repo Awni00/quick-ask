@@ -23,6 +23,12 @@ final class Settings {
         ])
     }
 
+    /// Set once the user has held ⌘ to see the shortcuts; hides the hint.
+    var cmdHintSeen: Bool {
+        get { defaults.bool(forKey: "cmdHintSeen") }
+        set { defaults.set(newValue, forKey: "cmdHintSeen") }
+    }
+
     /// Open Quick Ask at login (toggle in the menu-bar menu).
     var launchAtLogin: Bool {
         get { defaults.bool(forKey: "launchAtLogin") }

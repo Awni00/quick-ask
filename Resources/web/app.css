@@ -32,7 +32,7 @@ html, body {
 
 /* Thread */
 #thread { overflow-y: auto; padding: 14px 18px 2px; }
-body.empty #thread, body.empty #hints { display: none; }
+body.empty #thread { display: none; }
 
 .msg { margin: 0 0 14px; }
 .msg.user { display: flex; justify-content: flex-end; }
@@ -103,47 +103,77 @@ pre code, pre code.hljs { background: none; padding: 0; }
 .thinking span:nth-child(3) { animation-delay: 0.3s; }
 @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 
-/* Composer */
-#composer { display: flex; align-items: flex-start; gap: 10px; padding: 15px 16px; }
-body:not(.empty) #composer { border-top: 1px solid var(--border); padding: 10px 16px; }
-.spark { color: var(--muted); font-size: 16px; line-height: 24px; }
-body:not(.empty) .spark { line-height: 21px; font-size: 14px; }
+/* Actions under an answer: faint under the latest, on hover for earlier ones */
+.msg.assistant { position: relative; }
+.acts { display: flex; gap: 2px; margin: 4px 0 0 -5px; }
+/* Earlier answers: the buttons float over the answer's bottom-right corner on
+   hover, so they take no space between messages. */
+.msg.assistant:not(.latest) .acts {
+  position: absolute; right: 0; bottom: -4px; margin: 0;
+  background: var(--panel-bg, rgba(127, 127, 127, 0.12)); border-radius: 7px;
+  opacity: 0; transition: opacity 0.12s;
+}
+.msg.assistant:not(.latest):hover .acts { opacity: 1; }
+.msg.assistant.latest .acts .icon { color: var(--muted); }
+
+/* Buttons */
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: default; }
+button svg { width: 16px; height: 16px; display: block; }
+.icon {
+  width: 26px; height: 24px; border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--muted);
+}
+.icon:hover { background: var(--bubble); color: var(--text); }
+.icon.done { color: var(--text); }
+
+/* Composer: prompt row, then a slim toolbar */
+#composer { padding: 12px 12px 8px 16px; }
+body:not(.empty) #composer { border-top: 1px solid var(--border); padding-top: 10px; }
+.prompt-row { display: flex; align-items: flex-end; gap: 10px; }
 textarea {
   flex: 1;
   resize: none;
-  border: 0; outline: 0; padding: 0; margin: 0;
+  border: 0; outline: 0; padding: 1px 0; margin: 0;
   background: transparent;
   color: inherit;
   font: 18px/24px -apple-system, BlinkMacSystemFont, sans-serif;
   max-height: 144px;
 }
-body:not(.empty) textarea { font-size: 14px; line-height: 21px; }
+body:not(.empty) textarea { font-size: 14px; line-height: 21px; padding: 2px 0; }
 textarea::placeholder { color: var(--muted); }
-.chip {
-  font: 11.5px -apple-system, sans-serif;
-  color: var(--muted);
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 2px 8px;
-  margin-top: 2px;
-  white-space: nowrap;
+.send {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--text); color: var(--surface, #fff);
+  transition: background 0.12s, color 0.12s;
 }
+@media (prefers-color-scheme: dark) { .send { color: #1d1d1f; } }
+.send.off { background: var(--bubble); color: var(--muted); }
 
-/* Hints */
-#hints {
-  display: flex; gap: 12px; justify-content: flex-end; align-items: center;
-  padding: 6px 14px 8px;
-  font-size: 11px; color: var(--muted);
-  border-top: 1px solid var(--border);
+.toolbar {
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 0 0 -4px; min-height: 24px;
+  font-size: 11.5px; color: var(--muted);
   white-space: nowrap;
 }
-#toast { margin-right: auto; color: var(--text); }
-#hints [hidden] { display: none; }
+.models { display: flex; gap: 2px; }
+.chip {
+  font-size: 11.5px; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 1px 8px; line-height: 18px;
+}
+.chip:hover { color: var(--text); }
+.models.open .chip { border-color: transparent; }
+.models.open .chip.current { border-color: var(--border); color: var(--text); background: var(--bubble); }
+#toast { color: var(--text); }
+.hint, .tools, .legend { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+.legend { gap: 9px; display: none; font-size: 11px; }
+body.cmd .legend { display: flex; }
+body.cmd .hint, body.cmd .tools { display: none; }
+[hidden] { display: none !important; }
 kbd {
-  font: inherit;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0 4px;
-  margin-right: 4px;
+  font: inherit; font-size: 11px;
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 0 4px; margin-right: 3px;
 }

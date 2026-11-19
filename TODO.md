@@ -2,9 +2,6 @@
 
 ## Next
 
-- [ ] **Redesign the popup.** Keep the current design language, but rethink the
-  layout. For example: put a send button (↵) to the right of the prompt, and
-  show the model somewhere else.
 - [ ] **Continue the same session in the full app (⌘O).** Today ⌘O opens a *new*
   Claude chat with the transcript filled in. That's because:
   - Quick Ask runs `claude -p --no-session-persistence`, so there's no saved
@@ -31,10 +28,12 @@
 - [ ] Show a clear message when the CLI is logged out ("run `claude auth login`")
   instead of the CLI's raw error.
 - [ ] Remember the panel position if it's dragged.
-- [ ] Optionally hide the shortcut hint bar.
 
 ## Done
 
+- [x] Redesign (layout A): send/stop button in the prompt row; toolbar with the
+  model picker, open-in-Claude and new chat; copy/retry under answers; shortcuts
+  shown while holding ⌘ (replaces the hint bar)
 - [x] Name: keep "Quick Ask"
 - [x] Icon: "interlock", a white "?" whose stem is an amber ⚡ (quick + ask), plus a
   matching menu-bar glyph. Sources in `Resources/Icon/`; other concepts in

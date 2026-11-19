@@ -190,6 +190,7 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
             "models": store.provider.models.map { ["id": $0.id, "label": $0.label] },
             "provider": store.provider.displayName,
             "handoff": store.provider.handoff?.appName as Any? ?? NSNull(),
+            "showCmdHint": !settings.cmdHintSeen,
             "maxHeight": maxHeight,
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: state),
@@ -218,6 +219,7 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
         case "copyAnswer": copy(store.lastAnswer)
         case "close": hide()
         case "handoff": handOff()
+        case "cmdHintSeen": settings.cmdHintSeen = true
         case "open":
             if let s = body["url"] as? String, let url = URL(string: s) { openExternally(url) }
         default: break

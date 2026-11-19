@@ -49,29 +49,46 @@
     return cache.get(text);
   };
 
+  const icon = (name) => `<svg><use href="#i-${name}"/></svg>`;
   const $ = (id) => document.getElementById(id);
-  const thread = $("thread"), input = $("input"), modelChip = $("model"), toast = $("toast");
-  const composer = $("composer"), hints = $("hints"), app = $("app");
+  const app = $("app"), thread = $("thread"), composer = $("composer"), input = $("input");
+  const sendButton = $("send"), models = $("models"), toast = $("toast");
+  const hint = $("hint"), tools = $("tools"), legend = $("legend");
+  const handoffButton = $("handoff"), newButton = $("new");
 
   let state = {
     messages: [], pending: null, error: null, model: "", models: [],
-    provider: "Claude", handoff: null, maxHeight: 600,
+    provider: "Claude", handoff: null, showCmdHint: false, maxHeight: 600,
   };
   let scheduled = false;
+  let modelsOpen = false;
+
+  const isLoading = () => state.pending !== null;
+  const hasAnswer = () => state.messages.some((m) => m.role === "assistant");
 
   function render() {
     scheduled = false;
     const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 40;
 
+    // Thread
+    const lastAnswer = isLoading() ? -1 : state.messages.map((m) => m.role).lastIndexOf("assistant");
     let html = "";
-    for (const m of state.messages) {
+    state.messages.forEach((m, i) => {
       if (m.role === "user") {
         html += `<div class="msg user"><div class="bubble">${escapeHtml(m.content)}</div></div>`;
-      } else {
-        html += `<div class="msg assistant">${renderMarkdown(m.content)}${m.stopped ? '<div class="note">Stopped</div>' : ""}</div>`;
+        return;
       }
-    }
-    if (state.pending !== null) {
+      const latest = i === lastAnswer;
+      const acts =
+        `<div class="acts">` +
+        `<button class="icon" data-act="copy" data-i="${i}" aria-label="Copy answer" title="Copy${latest ? " (⌘C)" : ""}">${icon("copy")}</button>` +
+        (latest ? `<button class="icon" data-act="retry" aria-label="Retry" title="Retry (⌘R)">${icon("retry")}</button>` : "") +
+        `</div>`;
+      html +=
+        `<div class="msg assistant${latest ? " latest" : ""}">${renderMarkdown(m.content)}` +
+        `${m.stopped ? '<div class="note">Stopped</div>' : ""}${acts}</div>`;
+    });
+    if (isLoading()) {
       html += state.pending
         ? `<div class="msg assistant">${md.render(state.pending)}</div>`
         : `<div class="msg assistant thinking"><span></span><span></span><span></span></div>`;
@@ -79,23 +96,63 @@
     if (state.error) html += `<div class="error">${escapeHtml(state.error)}</div>`;
     thread.innerHTML = html;
 
-    const empty = state.messages.length === 0 && state.pending === null && !state.error;
+    // Composer
+    const empty = state.messages.length === 0 && !isLoading() && !state.error;
     document.body.classList.toggle("empty", empty);
     input.placeholder = empty ? `Ask ${state.provider}` : "Ask a follow-up";
+    updateSendButton();
+    renderModels();
+
     const canHandOff = Boolean(state.handoff) && state.messages.length > 0;
-    $("handoff-hint").hidden = !canHandOff;
-    if (state.handoff) $("handoff-label").textContent = `open in ${state.handoff}`;
-    const current = state.models.find((m) => m.id === state.model);
-    modelChip.textContent = current ? current.label : state.model;
+    handoffButton.hidden = !canHandOff;
+    if (state.handoff) handoffButton.title = `Open in ${state.handoff} (⌘O)`;
+    newButton.hidden = empty;
+    hint.hidden = !(state.showCmdHint && empty);
+    renderLegend(canHandOff);
 
     fitThread();
-    if (nearBottom || state.pending !== null) thread.scrollTop = thread.scrollHeight;
+    if (nearBottom || isLoading()) thread.scrollTop = thread.scrollHeight;
+  }
+
+  // Send turns into stop while an answer streams; faded when there's nothing to send.
+  function updateSendButton() {
+    const loading = isLoading();
+    sendButton.innerHTML = icon(loading ? "stop" : "send");
+    sendButton.title = loading ? "Stop (⌘.)" : "Send (↵)";
+    sendButton.setAttribute("aria-label", loading ? "Stop" : "Send");
+    sendButton.classList.toggle("off", !loading && input.value.trim() === "");
+  }
+
+  // Closed: one chip with the current model. Open: one chip per model.
+  function renderModels() {
+    const current = state.models.find((m) => m.id === state.model);
+    models.classList.toggle("open", modelsOpen);
+    if (!modelsOpen) {
+      models.innerHTML = `<button class="chip" data-model-toggle title="Model (⌘1–${state.models.length})">${escapeHtml(current ? current.label : state.model)} ▾</button>`;
+      return;
+    }
+    models.innerHTML = state.models
+      .map((m, i) =>
+        `<button class="chip${m.id === state.model ? " current" : ""}" data-model="${m.id}" title="⌘${i + 1}">${escapeHtml(m.label)}</button>`)
+      .join("");
+  }
+
+  function renderLegend(canHandOff) {
+    const items = [];
+    if (hasAnswer()) items.push(["C", "copy"], ["R", "retry"]);
+    if (canHandOff) items.push(["O", state.handoff]);
+    if (state.messages.length) items.push(["N", "new"]);
+    if (state.models.length) items.push([`1–${state.models.length}`, "model"]);
+    if (isLoading()) items.push([".", "stop"]);
+    items.push(["esc", "close", true]);
+    legend.innerHTML = items
+      .map(([key, label, plain]) => `<span><kbd>${plain ? "" : "⌘"}${key}</kbd>${label}</span>`)
+      .join("");
   }
 
   // The thread scrolls once the panel reaches its maximum height.
   function fitThread() {
-    const chrome = composer.offsetHeight + (hints.offsetParent ? hints.offsetHeight : 0);
-    thread.style.maxHeight = Math.max(80, state.maxHeight - chrome) + "px";
+    thread.style.maxHeight = Math.max(80, state.maxHeight - composer.offsetHeight) + "px";
   }
 
   const schedule = () => {
@@ -119,7 +176,10 @@
     input.style.height = "auto";
     input.style.height = Math.min(input.scrollHeight, 144) + "px";
   }
-  input.addEventListener("input", autosize);
+  input.addEventListener("input", () => {
+    autosize();
+    updateSendButton();
+  });
 
   let toastTimer;
   function flash(text) {
@@ -128,26 +188,75 @@
     toastTimer = setTimeout(() => (toast.textContent = ""), 1200);
   }
 
+  function send() {
+    const text = input.value.trim();
+    if (!text || isLoading()) return;
+    post("send", { text });
+    input.value = "";
+    autosize();
+    updateSendButton();
+  }
+
+  function chooseModel(id) {
+    const m = state.models.find((m) => m.id === id);
+    if (!m) return;
+    post("model", { id });
+    modelsOpen = false;
+    flash(m.label);
+    schedule();
+    input.focus();
+  }
+
   const hasSelection = () =>
     (window.getSelection()?.toString() ?? "") !== "" ||
     (document.activeElement === input && input.selectionStart !== input.selectionEnd);
 
+  // Holding ⌘ on its own for a moment shows the shortcut legend.
+  let cmdTimer;
+  const hideLegend = () => {
+    clearTimeout(cmdTimer);
+    document.body.classList.remove("cmd");
+  };
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Meta") {
+      clearTimeout(cmdTimer);
+      cmdTimer = setTimeout(() => {
+        document.body.classList.add("cmd");
+        if (modelsOpen) {
+          modelsOpen = false;
+          renderModels();
+        }
+        if (state.showCmdHint) {
+          state.showCmdHint = false;
+          post("cmdHintSeen");
+          schedule();
+        }
+      }, 350);
+    } else {
+      hideLegend();
+    }
+  });
+  document.addEventListener("keyup", (e) => {
+    if (e.key === "Meta") hideLegend();
+  });
+  window.addEventListener("blur", hideLegend);
+
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
-      const text = input.value.trim();
-      if (text && state.pending === null) {
-        post("send", { text });
-        input.value = "";
-        autosize();
-      }
+      send();
     }
   });
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       e.preventDefault();
-      post("close");
+      if (modelsOpen) {
+        modelsOpen = false;
+        schedule();
+      } else {
+        post("close");
+      }
       return;
     }
     if (!e.metaKey || e.ctrlKey || e.altKey) return;
@@ -168,31 +277,62 @@
       const m = state.models[Number(key) - 1];
       if (m) {
         e.preventDefault();
-        post("model", { id: m.id });
-        flash(m.label);
+        chooseModel(m.id);
       }
     } else if (key === "c" && !hasSelection()) {
       e.preventDefault();
-      if (state.messages.some((m) => m.role === "assistant")) {
+      if (hasAnswer()) {
         post("copyAnswer");
         flash("Copied answer");
       }
     }
   });
 
-  modelChip.addEventListener("click", () => {
-    const i = state.models.findIndex((m) => m.id === state.model);
-    const next = state.models[(i + 1) % state.models.length];
-    if (next) post("model", { id: next.id });
+  sendButton.addEventListener("click", () => {
+    if (isLoading()) post("stop");
+    else send();
+    input.focus();
+  });
+
+  models.addEventListener("click", (e) => {
+    const button = e.target.closest("button");
+    if (!button) return;
+    if (button.hasAttribute("data-model-toggle")) {
+      modelsOpen = true;
+      schedule();
+    } else {
+      chooseModel(button.dataset.model);
+    }
+  });
+
+  handoffButton.addEventListener("click", () => post("handoff"));
+  newButton.addEventListener("click", () => {
+    post("newChat");
     input.focus();
   });
 
   thread.addEventListener("click", (e) => {
-    const button = e.target.closest(".copy");
-    if (!button) return;
-    post("copy", { text: button.parentElement.querySelector("pre").innerText.replace(/\n$/, "") });
-    button.textContent = "Copied";
-    setTimeout(() => (button.textContent = "Copy"), 1200);
+    const codeCopy = e.target.closest(".copy");
+    if (codeCopy) {
+      post("copy", { text: codeCopy.parentElement.querySelector("pre").innerText.replace(/\n$/, "") });
+      codeCopy.textContent = "Copied";
+      setTimeout(() => (codeCopy.textContent = "Copy"), 1200);
+      return;
+    }
+    const act = e.target.closest("[data-act]");
+    if (!act) return;
+    if (act.dataset.act === "copy") {
+      const m = state.messages[Number(act.dataset.i)];
+      if (m) post("copy", { text: m.content });
+      act.innerHTML = icon("check");
+      act.classList.add("done");
+      setTimeout(() => {
+        act.innerHTML = icon("copy");
+        act.classList.remove("done");
+      }, 1200);
+    } else if (act.dataset.act === "retry") {
+      post("retry");
+    }
   });
 
   window.QA = {
@@ -205,7 +345,9 @@
     },
     clearInput() {
       input.value = "";
+      modelsOpen = false;
       autosize();
+      schedule();
     },
   };
 
