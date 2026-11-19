@@ -8,8 +8,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settings = Settings.shared
-        ScratchSpace.removeAll()  // leftovers from a crash
         let provider = ProviderRegistry.provider(id: settings.providerID)
+        // Leftovers from a crash; handed-off conversations are kept.
+        ScratchSpace.removeAll(except: settings.handedOffConversations, provider: provider)
         controller = PanelController(store: ConversationStore(provider: provider, settings: settings), settings: settings)
 
         installEditMenu()
@@ -53,7 +54,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        ScratchSpace.removeAll()
+        let settings = Settings.shared
+        ScratchSpace.removeAll(except: settings.handedOffConversations,
+                               provider: ProviderRegistry.provider(id: settings.providerID))
     }
 
     private func registerHotKey() {

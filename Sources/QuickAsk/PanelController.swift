@@ -229,6 +229,8 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
             "models": store.provider.models.map { ["id": $0.id, "label": $0.label, "hint": $0.hint] },
             "provider": store.provider.displayName,
             "handoff": store.provider.handoff?.appName as Any? ?? NSNull(),
+            "sessionHandoff": store.canHandOffSession
+                ? (store.provider.sessionHandoff?.appName as Any? ?? NSNull()) : NSNull(),
             "showCmdHint": !settings.cmdHintSeen,
             "hotkeyLabel": HotKey.displayLabel(settings.hotkey),
             "maxHeight": maxHeight,
@@ -284,6 +286,7 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
         case "copyAnswer": copy(store.lastAnswer)
         case "close": hide()
         case "handoff": handOff()
+        case "handoffChat": handOffAsChat()
         case "settings":
             hide()
             SettingsWindowController.shared.show()
@@ -294,9 +297,26 @@ final class PanelController: NSObject, NSWindowDelegate, WKScriptMessageHandler,
         }
     }
 
-    /// Continues the conversation in the provider's app (⌘O). If it had to be
-    /// shortened, the full conversation is also put on the clipboard.
+    /// ⌘O: continues this conversation's session in the provider's app (for
+    /// Claude: the desktop app's Code tab). If there's no session to continue,
+    /// e.g. after a failed answer, or the app isn't installed, falls back to
+    /// a new chat with the transcript.
     func handOff() {
+        if let link = store.provider.sessionHandoff?.makeURL("00000000-0000-0000-0000-000000000000"),
+           NSWorkspace.shared.urlForApplication(toOpen: link) != nil,
+           let url = store.handOffSession() {
+            pendingContext = nil
+            hide()
+            NSWorkspace.shared.open(url)
+            js("QA.clearInput()")
+            return
+        }
+        handOffAsChat()
+    }
+
+    /// ⇧⌘O: a new chat in the provider's app with the conversation filled in.
+    /// If it had to be shortened, the full conversation is also put on the clipboard.
+    func handOffAsChat() {
         guard let target = store.provider.handoff, !store.messages.isEmpty else { return }
         guard let (url, text) = target.resolve(store.messages) else {
             NSSound.beep()

@@ -70,6 +70,12 @@ final class Settings {
         defaults.set(model, forKey: "model.\(provider.id)")
     }
 
+    /// Conversation folders handed off with ⌘O; kept when cleaning up.
+    var handedOffConversations: Set<String> {
+        get { Set(defaults.stringArray(forKey: "handedOffConversations") ?? []) }
+        set { defaults.set(Array(newValue).sorted(), forKey: "handedOffConversations") }
+    }
+
     func executableOverride(for provider: AgentProvider) -> String? {
         defaults.string(forKey: "executable.\(provider.id)")
     }

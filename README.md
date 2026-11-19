@@ -2,8 +2,9 @@
 
 A macOS menu-bar app: press ⌥Space, ask a quick question, and read the answer in a
 floating popup. Answers come from an agent CLI (currently Claude Code, on your
-subscription) run with session persistence off, so nothing is saved. The
-conversation lives in memory and is cleared after 10 minutes away or with ⌘N.
+subscription). Each conversation is a CLI session with its own folder, kept only
+while the conversation lasts (by default 10 minutes after closing, or until ⌘N);
+then both are deleted, unless you continued it in the desktop app with ⌘O.
 
 ## Build and install
 
@@ -27,7 +28,8 @@ it's listed in System Settings → General → Login Items).
 | ⌘R | Retry the last question |
 | ⌘. | Stop the answer |
 | ⌘N | New chat |
-| ⌘O | Continue in the Claude app (new chat with the conversation filled in; if it's too long, older turns are left out and the full text is copied) |
+| ⌘O | Continue this same session in the Claude desktop app's Code tab (`claude://resume`) |
+| ⇧⌘O | Open as a new Claude chat with the conversation filled in (if it's too long, older turns are left out and the full text is copied) |
 | ⌘1–⌘3 | Haiku / Sonnet / Opus |
 | ⌘, | Settings |
 | Esc | Hide |

@@ -5,19 +5,7 @@
 - [ ] **Optional code execution** (Bash in the scratch folder), only with proper
   sandboxing (no access outside the folder); off by default.
 
-- [ ] **Continue the same session in the full app (⌘O).** Today ⌘O opens a *new*
-  Claude chat with the transcript filled in. That's because:
-  - Quick Ask runs `claude -p --no-session-persistence`, so there's no saved
-    session to resume.
-  - The `claude://claude.ai/new?q=…` link only fills in a new chat's message box;
-    there's no known way to create a claude.ai chat with prior turns.
-
-  Options to explore:
-  - Save the session (drop `--no-session-persistence` for conversations that get
-    handed off, or always, and delete the session file afterwards) and hand off to
-    a Claude Code session: `claude --resume <id>` in a terminal, or a
-    `claude://code/...` link in the desktop app, if one can open a specific session.
-  - Check whether claude.ai or the desktop app gains a way to import a conversation.
+- [ ] Optionally delete handed-off conversations (folder + session) after N days.
 - [ ] **Second provider (e.g. Codex).** Write a provider in `Sources/QuickAsk/Agents/`
   and register it in `ProviderRegistry`; add a way to choose the provider.
 
@@ -60,4 +48,7 @@
 - [x] Keep the conversation for 10 minutes after closing; ⌘N for a new one
 - [x] No Documents prompt: clean CLI environment, no user settings or plugins
 - [x] Open at login
-- [x] ⌘O: continue in the Claude app (new chat with the transcript)
+- [x] ⌘O continues the same session in the desktop app's Code tab
+  (`claude://resume?session=<id>`); ⇧⌘O opens a new chat with the transcript.
+  Conversations are CLI sessions (follow-ups resume them); deleted with the
+  conversation unless handed off. Checked with `QuickAsk --session-test`.

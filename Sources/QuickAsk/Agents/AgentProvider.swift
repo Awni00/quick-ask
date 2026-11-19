@@ -31,14 +31,23 @@ struct ModelOption {
     var hint: String = ""  // a few words for the tooltip, e.g. "fastest"
 }
 
+/// For providers with sessions: start a new one (the prompt is the whole
+/// conversation so far) or resume one (the prompt is just the new message).
+enum SessionMode: Equatable {
+    case start(id: String)
+    case resume(id: String)
+}
+
 struct AgentRequest {
     var messages: [ChatMessage]
     var model: String?
     var instructions: String
-    /// The conversation's scratch folder (see ScratchSpace).
+    /// The conversation's folder (see ScratchSpace).
     var workingDirectory: URL
     /// Whether the agent may search the web and fetch pages.
     var allowWeb = true
+    /// nil for providers without sessions: every request is self-contained.
+    var session: SessionMode? = nil
 }
 
 /// Whether the CLI is signed in, for the settings window.
@@ -71,9 +80,22 @@ protocol AgentProvider {
     /// parent agent session left behind that would change how the CLI runs.
     var removedEnvironmentPrefixes: [String] { get }
 
-    /// Continuing a conversation in the provider's full app ("Open in Claude").
-    /// nil if the provider has no app to hand off to.
+    /// Continuing a conversation as a new chat in the provider's app, with the
+    /// transcript filled in (⇧⌘O). nil if the provider has no such app.
     var handoff: HandoffTarget? { get }
+
+    /// Whether the CLI keeps sessions that can be resumed and handed off. If
+    /// so, follow-ups resume the session and ⌘O continues that same session in
+    /// the provider's app.
+    var supportsSessions: Bool { get }
+    /// The app ⌘O continues a session in (e.g. "Claude Code"), and the link that
+    /// opens a session there. nil if sessions can't be handed off.
+    var sessionHandoff: SessionHandoff? { get }
+    /// Deletes the CLI's saved sessions for one conversation folder.
+    func removeSessions(workingDirectory: URL)
+    /// Deletes saved sessions for every conversation folder under `root`
+    /// except the named ones (cleanup at launch and quit).
+    func removeSessions(under root: URL, except keep: Set<String>)
 
     func arguments(for request: AgentRequest) -> [String]
     /// Asks the CLI whether it's signed in (blocking; call off the main thread).
@@ -87,11 +109,23 @@ protocol AgentProvider {
 extension AgentProvider {
     var removedEnvironmentPrefixes: [String] { [] }
     var handoff: HandoffTarget? { nil }
+    var supportsSessions: Bool { false }
+    var sessionHandoff: SessionHandoff? { nil }
+    func removeSessions(workingDirectory: URL) {}
+    func removeSessions(under root: URL, except keep: Set<String>) {}
     func signInStatus(executable: String) -> SignInStatus? { nil }
 
     func standardInput(for request: AgentRequest) -> String {
-        Prompt.transcript(request.messages)
+        if case .resume = request.session, let last = request.messages.last {
+            return last.fullText  // the session already has the rest
+        }
+        return Prompt.transcript(request.messages)
     }
+}
+
+struct SessionHandoff {
+    let appName: String  // "Continue in <appName>"
+    let makeURL: (_ sessionID: String) -> URL?
 }
 
 enum ProviderRegistry {

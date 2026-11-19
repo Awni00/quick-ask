@@ -3,8 +3,9 @@ import Foundation
 /// Claude Code CLI (`claude -p`), using the user's claude.ai subscription.
 ///
 /// Runs in the CLI's restricted mode with a small tool set: web search, fetching
-/// pages, and file tools confined to the conversation's scratch folder. No tool
-/// can run code. Sessions are not saved; MCP servers and user settings are off.
+/// pages, and file tools confined to the conversation's folder. No tool can run
+/// code. MCP servers and user settings are off. Each conversation is a CLI
+/// session (deleted with the conversation unless it's handed off with ⌘O).
 struct ClaudeCodeProvider: AgentProvider {
     let id = "claude"
     let displayName = "Claude"
@@ -38,12 +39,52 @@ struct ClaudeCodeProvider: AgentProvider {
         },
     ])
 
+    // Sessions: the CLI saves each session under ~/.claude/projects/<folder>/,
+    // where <folder> is the working directory with every character other than
+    // ASCII letters and digits replaced by "-". The desktop app imports a saved
+    // session with claude://resume?session=<id> and opens it in its Code tab.
+    let supportsSessions = true
+    let sessionHandoff: SessionHandoff? = SessionHandoff(appName: "Claude Code") { id in
+        URL(string: "claude://resume?session=\(id)")
+    }
+
+    static var projectsDirectory: URL {
+        URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".claude/projects", isDirectory: true)
+    }
+
+    static func projectFolderName(for directory: URL) -> String {
+        // The CLI uses the real path (symlinks resolved) of its working directory.
+        String(directory.resolvingSymlinksInPath().path.unicodeScalars.map {
+            ($0.isASCII && CharacterSet.alphanumerics.contains($0)) ? Character($0) : "-"
+        })
+    }
+
+    func removeSessions(workingDirectory: URL) {
+        let folder = Self.projectFolderName(for: workingDirectory)
+        guard !folder.isEmpty else { return }
+        try? FileManager.default.removeItem(at: Self.projectsDirectory.appendingPathComponent(folder))
+    }
+
+    func removeSessions(under root: URL, except keep: Set<String>) {
+        // Only folders named after `root/<conversation id>`.
+        let prefix = Self.projectFolderName(for: root) + "-"
+        let keepNames = Set(keep.map { Self.projectFolderName(for: root.appendingPathComponent($0)) })
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: Self.projectsDirectory.path)) ?? []
+        for name in names where name.hasPrefix(prefix) && !keepNames.contains(name) {
+            try? FileManager.default.removeItem(at: Self.projectsDirectory.appendingPathComponent(name))
+        }
+    }
+
     func arguments(for request: AgentRequest) -> [String] {
         let webTools: Set = ["WebSearch", "WebFetch"]
         let tools = Self.tools.filter { request.allowWeb || !webTools.contains($0) }.joined(separator: ",")
-        var args = [
-            "-p",
-            "--no-session-persistence",
+        var session: [String]
+        switch request.session {
+        case .start(let id): session = ["--session-id", id]
+        case .resume(let id): session = ["--resume", id]
+        case nil: session = ["--no-session-persistence"]
+        }
+        var args = ["-p"] + session + [
             "--output-format", "stream-json",
             "--include-partial-messages",
             "--verbose",

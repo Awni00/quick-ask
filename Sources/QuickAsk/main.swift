@@ -54,6 +54,68 @@ if let index = arguments.firstIndex(of: "--settings-snapshot"), index + 1 < argu
         if name == "long" { print("  starts: \(text.text.prefix(120).replacingOccurrences(of: "\n", with: "⏎"))") }
     }
     exit(0)
+} else if arguments.contains("--session-test") {
+    // QuickAsk --session-test: a real two-turn conversation through the store,
+    // checking that follow-ups resume the session, retry starts a new one,
+    // hand-off keeps the files and a normal reset deletes them. Doesn't open
+    // any app (the hand-off link is only built).
+    let settings = Settings.shared
+    let provider = ProviderRegistry.provider(id: settings.providerID)
+    let store = ConversationStore(provider: provider, settings: settings)
+    let savedHandedOff = settings.handedOffConversations
+    var step = 0
+    func check(_ ok: Bool, _ what: String) { print("\(ok ? "PASS" : "FAIL")  \(what)") }
+    func sessionFolders() -> Set<String> {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: ClaudeCodeProvider.projectsDirectory.path)) ?? []
+        let prefix = ClaudeCodeProvider.projectFolderName(for: ScratchSpace.root) + "-"
+        return Set(names.filter { $0.hasPrefix(prefix) })
+    }
+    func conversationFolders() -> Set<String> {
+        Set((try? FileManager.default.contentsOfDirectory(atPath: ScratchSpace.root.path)) ?? [])
+    }
+    let before = (sessions: sessionFolders(), folders: conversationFolders())
+    let savedModel = settings.model(for: provider)
+    store.setModel("haiku")
+    var waiting = false  // true while an answer we asked for is pending
+    func ask(_ action: () -> Void) { waiting = true; action() }
+    store.onChange = {
+        guard waiting, !store.isLoading else { return }
+        waiting = false
+        if let error = store.error { print("FAIL  CLI error: \(error)"); exit(1) }
+        step += 1
+        switch step {
+        case 1:
+            check(store.lastAnswer != nil, "turn 1 answered")
+            check(store.canHandOffSession, "session can be handed off after turn 1")
+            ask { store.send("What number did I ask you to remember? Reply with just the number.") }
+        case 2:
+            check(store.lastAnswer?.contains("4817") == true, "turn 2 resumed the session (answer: \(store.lastAnswer ?? "-"))")
+            check(sessionFolders().subtracting(before.sessions).count == 1, "one session folder exists in ~/.claude/projects")
+            ask { store.retry() }
+        case 3:
+            check(store.lastAnswer?.contains("4817") == true, "retry answered from a fresh session (answer: \(store.lastAnswer ?? "-"))")
+            let url = store.handOffSession()
+            check(url?.absoluteString.hasPrefix("claude://resume?session=") == true, "hand-off link: \(url?.absoluteString ?? "-")")
+            let keptSessions = sessionFolders().subtracting(before.sessions)
+            let keptFolders = conversationFolders().subtracting(before.folders)
+            check(keptSessions.count == 1 && keptFolders.count == 1, "handed-off conversation kept its folder and session")
+            // Clean up the test's handed-off conversation.
+            settings.handedOffConversations = savedHandedOff
+            for name in keptFolders { ScratchSpace.remove(ScratchSpace.root.appendingPathComponent(name), provider: provider) }
+            // Now a normal conversation, which reset must delete.
+            ask { store.send("Say OK.") }
+        case 4:
+            check(sessionFolders().subtracting(before.sessions).count == 1, "second conversation has a session")
+            store.reset()
+            check(sessionFolders() == before.sessions && conversationFolders() == before.folders,
+                  "reset deleted the conversation's folder and session")
+            settings.setModel(savedModel, for: provider)
+            exit(0)
+        default: break
+        }
+    }
+    ask { store.send("Remember the number 4817. Reply with just OK.") }
+    dispatchMain()
 } else if let index = arguments.firstIndex(of: "--selftest") {
     // QuickAsk --selftest [--model m] question...
     // Runs one request through the provider layer and prints the stream.
@@ -85,7 +147,7 @@ if let index = arguments.firstIndex(of: "--settings-snapshot"), index + 1 < argu
     }, completion: { outcome in
         let files = (try? FileManager.default.contentsOfDirectory(atPath: request.workingDirectory.path)) ?? []
         print("\n--- scratch files: \(files)")
-        ScratchSpace.remove(request.workingDirectory)
+        ScratchSpace.remove(request.workingDirectory, provider: provider)
         let total = Date().timeIntervalSince(start)
         switch outcome {
         case .success: print(String(format: "\n--- ok: first text %.2fs, total %.2fs", firstText ?? -1, total))

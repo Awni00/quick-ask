@@ -1,19 +1,27 @@
 import Foundation
 
-/// The conversation shown in the popup. Kept in memory only, and each request
-/// runs an unsaved CLI session; the only thing on disk is the conversation's
-/// scratch folder, which is deleted with the conversation.
+/// The conversation shown in the popup.
+///
+/// On disk it has a folder (the CLI's working directory) and, for providers
+/// with sessions, the CLI's saved session. Follow-ups resume that session.
+/// Both are deleted when the conversation ends, unless it was handed off to
+/// the provider's app with ⌘O.
 /// All methods are called on the main thread.
 final class ConversationStore {
     private(set) var messages: [ChatMessage] = []
     private(set) var pending: String?  // streaming answer; nil when idle
     private(set) var status: String?   // current tool activity, while streaming
     private(set) var error: String?
-    private var scratch: URL?
     private(set) var model: String
     let provider: AgentProvider
 
     var onChange: (() -> Void)?
+
+    private var folder: URL?
+    /// The CLI session holding this conversation, and whether it matches
+    /// `messages` (false after a failed or stopped answer, or while answering).
+    private var sessionID: String?
+    private var sessionInSync = false
 
     private let settings: Settings
     private let runner = AgentRunner()
@@ -29,19 +37,25 @@ final class ConversationStore {
     var isEmpty: Bool { messages.isEmpty && pending == nil && error == nil }
     var lastAnswer: String? { messages.last { $0.role == .assistant }?.content }
 
+    /// Whether ⌘O can continue this conversation's session in the provider's app.
+    var canHandOffSession: Bool {
+        provider.sessionHandoff != nil && sessionInSync && sessionID != nil && !isLoading
+    }
+
     /// Returns whether the question was sent.
     @discardableResult
     func send(_ text: String, context: AttachedContext? = nil) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isLoading else { return false }
-        run(messages + [ChatMessage(role: .user, content: text, context: context)])
+        run(messages + [ChatMessage(role: .user, content: text, context: context)], fresh: false)
         return true
     }
 
-    /// Asks the last question again (with the current model).
+    /// Asks the last question again (with the current model). Sessions can't be
+    /// rewound, so this starts a new session from the conversation so far.
     func retry() {
         guard !isLoading, let last = messages.lastIndex(where: { $0.role == .user }) else { return }
-        run(Array(messages[...last]))
+        run(Array(messages[...last]), fresh: true)
     }
 
     func stop() {
@@ -64,6 +78,17 @@ final class ConversationStore {
         onChange?()
     }
 
+    /// The link that continues this conversation's session in the provider's
+    /// app. Marks the conversation as handed off (its files are kept) and
+    /// starts a fresh one here, so the two don't both write to the session.
+    func handOffSession() -> URL? {
+        guard canHandOffSession, let handoff = provider.sessionHandoff, let sessionID, let folder,
+              let url = handoff.makeURL(sessionID) else { return nil }
+        settings.handedOffConversations.insert(folder.lastPathComponent)
+        reset()
+        return url
+    }
+
     func reset() {
         generation += 1
         runner.cancel()
@@ -71,12 +96,19 @@ final class ConversationStore {
         pending = nil
         status = nil
         error = nil
-        ScratchSpace.remove(scratch)
-        scratch = nil
+        if let folder, !settings.handedOffConversations.contains(folder.lastPathComponent) {
+            ScratchSpace.remove(folder, provider: provider)
+        }
+        folder = nil
+        sessionID = nil
+        sessionInSync = false
         onChange?()
     }
 
-    private func run(_ history: [ChatMessage]) {
+    /// Answers the last user message in `history`. With sessions: resumes the
+    /// session if it's in sync, otherwise (or when `fresh`) starts a new one
+    /// whose first prompt is the whole conversation so far.
+    private func run(_ history: [ChatMessage], fresh: Bool) {
         generation += 1
         let current = generation
         messages = history
@@ -85,13 +117,25 @@ final class ConversationStore {
         error = nil
         onChange?()
 
-        if scratch == nil { scratch = ScratchSpace.make() }
+        if folder == nil { folder = ScratchSpace.make() }
+        var session: SessionMode?
+        if provider.supportsSessions {
+            if !fresh, sessionInSync, let sessionID {
+                session = .resume(id: sessionID)
+            } else {
+                let id = UUID().uuidString.lowercased()
+                sessionID = id
+                session = .start(id: id)
+            }
+            sessionInSync = false
+        }
         let request = AgentRequest(
             messages: history,
             model: model,
             instructions: Prompt.instructions(extra: settings.instructions, web: settings.webSearch),
-            workingDirectory: scratch!,
-            allowWeb: settings.webSearch
+            workingDirectory: folder!,
+            allowWeb: settings.webSearch,
+            session: session
         )
         let executable = Executable.resolve(
             override: settings.executableOverride(for: provider),
@@ -121,6 +165,7 @@ final class ConversationStore {
                 switch outcome {
                 case .success(let text):
                     self.messages.append(ChatMessage(role: .assistant, content: text))
+                    self.sessionInSync = true
                 case .failure(let message):
                     self.error = message
                 case .cancelled:

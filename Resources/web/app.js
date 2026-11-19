@@ -116,7 +116,9 @@
 
     const canHandOff = Boolean(state.handoff) && state.messages.length > 0;
     handoffButton.hidden = !canHandOff;
-    if (state.handoff) handoffButton.title = `Open in ${state.handoff} (⌘O)`;
+    handoffButton.title = state.sessionHandoff
+      ? `Continue in ${state.sessionHandoff} (⌘O) · as a new ${state.handoff} chat: ⇧⌘O`
+      : `Open in ${state.handoff} (⌘O)`;
     newButton.hidden = empty;
     hint.hidden = !(state.showCmdHint && empty);
     renderLegend(canHandOff);
@@ -176,7 +178,11 @@
   function renderLegend(canHandOff) {
     const items = [];
     if (hasAnswer()) items.push(["C", "copy"], ["R", "retry"]);
-    if (canHandOff) items.push(["O", state.handoff]);
+    if (canHandOff && state.sessionHandoff) {
+      items.push(["O", "continue"], ["⇧⌘O", "chat", true]);
+    } else if (canHandOff) {
+      items.push(["O", state.handoff]);
+    }
     if (state.messages.length) items.push(["N", "new"]);
     if (state.models.length) items.push([`1–${state.models.length}`, "model"]);
     if (isLoading()) items.push([".", "stop"]);
@@ -305,7 +311,7 @@
       post("settings");
     } else if (key === "o") {
       e.preventDefault();
-      if (state.handoff && state.messages.length > 0) post("handoff");
+      if (state.messages.length > 0) post(e.shiftKey ? "handoffChat" : "handoff");
     } else if (key === "r") {
       e.preventDefault();
       post("retry");
