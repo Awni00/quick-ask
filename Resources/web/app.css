@@ -11,6 +11,8 @@
   --accent-bg: rgba(10, 102, 216, 0.12);
   --accent-fg: #0a66d8;
   --on-text: #fff;
+  --scroll-thumb: rgba(0, 0, 0, 0.22);
+  --scroll-thumb-hover: rgba(0, 0, 0, 0.38);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -25,6 +27,8 @@
     --accent-bg: rgba(110, 178, 255, 0.24);
     --accent-fg: #a9d1ff;
     --on-text: #1d1d1f;
+    --scroll-thumb: rgba(255, 255, 255, 0.26);
+    --scroll-thumb-hover: rgba(255, 255, 255, 0.45);
   }
 }
 
@@ -37,6 +41,20 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 *, *::before, *::after { box-sizing: border-box; }
+
+/* Slim scrollbars (thread, prompt, code blocks, wide math): a 5 px rounded
+   thumb inset in a 9 px transparent track; darker on hover. */
+::-webkit-scrollbar { width: 9px; height: 9px; background: transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: var(--scroll-thumb);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9px;
+  min-height: 28px;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--scroll-thumb-hover); }
+::-webkit-scrollbar-corner { background: transparent; }
 
 /* The page always fills the panel: the thread takes the remaining space and
    scrolls, and the composer stays whole at the bottom. The panel's size comes

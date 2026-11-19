@@ -11,8 +11,6 @@
 
 ## Later / ideas
 
-- [ ] Thinner scrollbars in the popup (thread and prompt), e.g. a slim overlay
-  thumb instead of the default thick one.
 - [ ] Show a clear message when the CLI is logged out ("run `claude auth login`")
   instead of the CLI's raw error.
 - [ ] Remember the panel position if it's dragged.
@@ -40,6 +38,7 @@
 - [x] Permissions survive rebuilds: builds are signed with a fixed designated
   requirement (`identifier "local.QuickAsk"`); checked across two rebuilds with
   different code hashes
+- [x] Slim scrollbars (5 px rounded thumb, darker on hover) in the popup
 - [x] Name: keep "Quick Ask"
 - [x] Icon: "interlock", a white "?" whose stem is an amber ⚡ (quick + ask), plus a
   matching menu-bar glyph. Sources in `Resources/Icon/`; other concepts in
