@@ -1,45 +1,58 @@
 import Foundation
 
-/// A folder per conversation: the CLI's working directory, where it may keep
-/// notes and files (its file tools are confined to it), and what its saved
-/// session belongs to.
+/// Where conversations live on disk.
 ///
-/// Folders live in ~/Library/Application Support/Quick Ask/Conversations/<id>.
-/// They're deleted when their conversation ends, except conversations handed
-/// off to the provider's app with ⌘O: those keep their folder (it becomes the
-/// working folder of the session in that app). Leftovers are cleaned up at
-/// launch and quit.
+/// All conversations share one working directory, ~/Library/Application
+/// Support/Quick Ask/Quick Ask, so sessions handed off to the desktop app are
+/// grouped under one "Quick Ask" project there (the app names projects after
+/// the working folder). Each conversation keeps its notes in its own subfolder,
+/// <workspace>/<conversation id>.
+///
+/// A conversation's subfolder and CLI session are deleted when it ends, except
+/// conversations handed off with ⌘O. Leftovers are cleaned up at launch and quit.
 enum ScratchSpace {
-    static var root: URL {
+    static var base: URL {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return support.appendingPathComponent("Quick Ask/Conversations", isDirectory: true)
+        return support.appendingPathComponent("Quick Ask", isDirectory: true)
     }
 
-    /// Before conversations could be handed off, folders were temporary.
-    private static var legacyRoot: URL {
+    /// The shared working directory (its name is the desktop app's project name).
+    static var workspace: URL { base.appendingPathComponent("Quick Ask", isDirectory: true) }
+
+    /// Earlier layouts: one working directory per conversation, and before
+    /// that, temporary folders.
+    private static var legacyRoot: URL { base.appendingPathComponent("Conversations", isDirectory: true) }
+    private static var legacyTempRoot: URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("QuickAsk", isDirectory: true)
     }
 
-    static func make(id: String = UUID().uuidString.lowercased()) -> URL {
-        let dir = root.appendingPathComponent(id, isDirectory: true)
+    /// Creates a conversation's notes subfolder (and the workspace).
+    static func makeConversation(id: String = UUID().uuidString.lowercased()) -> URL {
+        let dir = workspace.appendingPathComponent(id, isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
 
-    /// Deletes one conversation's folder and the provider's saved sessions for it.
-    static func remove(_ dir: URL?, provider: AgentProvider) {
-        guard let dir, dir.path.hasPrefix(root.path + "/") else { return }
-        provider.removeSessions(workingDirectory: dir)
+    /// Deletes one conversation's notes subfolder.
+    static func removeConversation(_ dir: URL?) {
+        guard let dir, dir.deletingLastPathComponent().standardizedFileURL == workspace.standardizedFileURL else { return }
         try? FileManager.default.removeItem(at: dir)
     }
 
-    /// Deletes every conversation folder and saved session except the handed-off ones.
-    static func removeAll(except keep: Set<String>, provider: AgentProvider) {
+    /// Deletes every conversation subfolder and CLI session except the
+    /// handed-off ones, plus leftovers from earlier layouts.
+    static func cleanUp(keepingConversations keepFolders: Set<String>, sessions keepSessions: Set<String>,
+                        provider: AgentProvider) {
         let fm = FileManager.default
-        for name in (try? fm.contentsOfDirectory(atPath: root.path)) ?? [] where !keep.contains(name) {
-            try? fm.removeItem(at: root.appendingPathComponent(name))
+        for name in (try? fm.contentsOfDirectory(atPath: workspace.path)) ?? [] where !keepFolders.contains(name) {
+            try? fm.removeItem(at: workspace.appendingPathComponent(name))
         }
-        provider.removeSessions(under: root, except: keep)
-        try? fm.removeItem(at: legacyRoot)
+        provider.removeSessions(workingDirectory: workspace, except: keepSessions)
+
+        for name in (try? fm.contentsOfDirectory(atPath: legacyRoot.path)) ?? [] where !keepFolders.contains(name) {
+            try? fm.removeItem(at: legacyRoot.appendingPathComponent(name))
+        }
+        provider.removeSessions(under: legacyRoot, except: keepFolders)
+        try? fm.removeItem(at: legacyTempRoot)
     }
 }

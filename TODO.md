@@ -11,6 +11,8 @@
 
 ## Later / ideas
 
+- [ ] Thinner scrollbars in the popup (thread and prompt), e.g. a slim overlay
+  thumb instead of the default thick one.
 - [ ] Show a clear message when the CLI is logged out ("run `claude auth login`")
   instead of the CLI's raw error.
 - [ ] Remember the panel position if it's dragged.
@@ -52,3 +54,6 @@
   (`claude://resume?session=<id>`); ⇧⌘O opens a new chat with the transcript.
   Conversations are CLI sessions (follow-ups resume them); deleted with the
   conversation unless handed off. Checked with `QuickAsk --session-test`.
+- [x] Handed-off sessions are grouped under one "Quick Ask" project (shared
+  working folder, per-conversation notes subfolders) and titled with the first
+  question (`--name`)

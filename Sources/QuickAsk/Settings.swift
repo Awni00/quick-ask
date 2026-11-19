@@ -70,10 +70,15 @@ final class Settings {
         defaults.set(model, forKey: "model.\(provider.id)")
     }
 
-    /// Conversation folders handed off with ⌘O; kept when cleaning up.
+    /// Conversation folders and CLI sessions handed off with ⌘O; kept when cleaning up.
     var handedOffConversations: Set<String> {
         get { Set(defaults.stringArray(forKey: "handedOffConversations") ?? []) }
         set { defaults.set(Array(newValue).sorted(), forKey: "handedOffConversations") }
+    }
+
+    var handedOffSessions: Set<String> {
+        get { Set(defaults.stringArray(forKey: "handedOffSessions") ?? []) }
+        set { defaults.set(Array(newValue).sorted(), forKey: "handedOffSessions") }
     }
 
     func executableOverride(for provider: AgentProvider) -> String? {

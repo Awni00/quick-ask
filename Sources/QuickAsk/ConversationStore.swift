@@ -85,8 +85,18 @@ final class ConversationStore {
         guard canHandOffSession, let handoff = provider.sessionHandoff, let sessionID, let folder,
               let url = handoff.makeURL(sessionID) else { return nil }
         settings.handedOffConversations.insert(folder.lastPathComponent)
+        settings.handedOffSessions.insert(sessionID)
         reset()
         return url
+    }
+
+    /// The session's display name: the first question, on one line, shortened.
+    static func title(for messages: [ChatMessage]) -> String? {
+        guard let first = messages.first(where: { $0.role == .user }) else { return nil }
+        let line = first.content.split(whereSeparator: \.isNewline).joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        guard !line.isEmpty else { return nil }
+        return line.count > 60 ? String(line.prefix(59)).trimmingCharacters(in: .whitespaces) + "…" : line
     }
 
     func reset() {
@@ -97,7 +107,8 @@ final class ConversationStore {
         status = nil
         error = nil
         if let folder, !settings.handedOffConversations.contains(folder.lastPathComponent) {
-            ScratchSpace.remove(folder, provider: provider)
+            ScratchSpace.removeConversation(folder)
+            if let sessionID { provider.removeSessions(ids: [sessionID], workingDirectory: ScratchSpace.workspace) }
         }
         folder = nil
         sessionID = nil
@@ -117,12 +128,14 @@ final class ConversationStore {
         error = nil
         onChange?()
 
-        if folder == nil { folder = ScratchSpace.make() }
+        if folder == nil { folder = ScratchSpace.makeConversation() }
         var session: SessionMode?
         if provider.supportsSessions {
             if !fresh, sessionInSync, let sessionID {
                 session = .resume(id: sessionID)
             } else {
+                // The previous session (if any) is superseded; delete it now.
+                if let old = sessionID { provider.removeSessions(ids: [old], workingDirectory: ScratchSpace.workspace) }
                 let id = UUID().uuidString.lowercased()
                 sessionID = id
                 session = .start(id: id)
@@ -132,10 +145,12 @@ final class ConversationStore {
         let request = AgentRequest(
             messages: history,
             model: model,
-            instructions: Prompt.instructions(extra: settings.instructions, web: settings.webSearch),
-            workingDirectory: folder!,
+            instructions: Prompt.instructions(extra: settings.instructions, web: settings.webSearch,
+                                              notesFolder: folder!.lastPathComponent),
+            workingDirectory: ScratchSpace.workspace,
             allowWeb: settings.webSearch,
-            session: session
+            session: session,
+            title: Self.title(for: history)
         )
         let executable = Executable.resolve(
             override: settings.executableOverride(for: provider),

@@ -48,6 +48,8 @@ struct AgentRequest {
     var allowWeb = true
     /// nil for providers without sessions: every request is self-contained.
     var session: SessionMode? = nil
+    /// A display name for a new session (shown in the provider's app after ⌘O).
+    var title: String? = nil
 }
 
 /// Whether the CLI is signed in, for the settings window.
@@ -91,10 +93,12 @@ protocol AgentProvider {
     /// The app ⌘O continues a session in (e.g. "Claude Code"), and the link that
     /// opens a session there. nil if sessions can't be handed off.
     var sessionHandoff: SessionHandoff? { get }
-    /// Deletes the CLI's saved sessions for one conversation folder.
-    func removeSessions(workingDirectory: URL)
-    /// Deletes saved sessions for every conversation folder under `root`
-    /// except the named ones (cleanup at launch and quit).
+    /// Deletes the CLI's saved sessions with these ids (in `workingDirectory`).
+    func removeSessions(ids: [String], workingDirectory: URL)
+    /// Deletes every saved session in `workingDirectory` except the kept ids.
+    func removeSessions(workingDirectory: URL, except keep: Set<String>)
+    /// Earlier layout (one working directory per conversation): deletes saved
+    /// sessions for every folder under `root` except the named ones.
     func removeSessions(under root: URL, except keep: Set<String>)
 
     func arguments(for request: AgentRequest) -> [String]
@@ -111,7 +115,8 @@ extension AgentProvider {
     var handoff: HandoffTarget? { nil }
     var supportsSessions: Bool { false }
     var sessionHandoff: SessionHandoff? { nil }
-    func removeSessions(workingDirectory: URL) {}
+    func removeSessions(ids: [String], workingDirectory: URL) {}
+    func removeSessions(workingDirectory: URL, except keep: Set<String>) {}
     func removeSessions(under root: URL, except keep: Set<String>) {}
     func signInStatus(executable: String) -> SignInStatus? { nil }
 
@@ -154,15 +159,26 @@ enum Prompt {
         be out of date.
         """
 
-    static let scratchInstructions = """
-        Your working directory is a scratch folder for this conversation: you may keep \
-        notes or files there across follow-ups. It is deleted when the conversation ends. \
-        You cannot run code or access other files.
-        """
+    static func scratchInstructions(notesFolder: String?) -> String {
+        guard let notesFolder else {
+            return """
+                Your working directory is a scratch folder for this conversation: you may keep \
+                notes or files there across follow-ups. It is deleted when the conversation ends. \
+                You cannot run code or access other files.
+                """
+        }
+        return """
+            Keep any notes or files for this conversation in the folder `\(notesFolder)/` in \
+            your working directory, across follow-ups; it is deleted when the conversation \
+            ends. Other folders there belong to other conversations: leave them alone. You \
+            cannot run code or access files outside the working directory.
+            """
+    }
 
-    static func instructions(extra: String, web: Bool = true) -> String {
+    static func instructions(extra: String, web: Bool = true, notesFolder: String? = nil) -> String {
         let extra = extra.trimmingCharacters(in: .whitespacesAndNewlines)
-        return [baseInstructions, web ? webInstructions : noWebInstructions, scratchInstructions, extra]
+        return [baseInstructions, web ? webInstructions : noWebInstructions,
+                scratchInstructions(notesFolder: notesFolder), extra]
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
     }

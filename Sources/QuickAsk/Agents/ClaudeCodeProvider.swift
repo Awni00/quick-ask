@@ -59,10 +59,21 @@ struct ClaudeCodeProvider: AgentProvider {
         })
     }
 
-    func removeSessions(workingDirectory: URL) {
-        let folder = Self.projectFolderName(for: workingDirectory)
-        guard !folder.isEmpty else { return }
-        try? FileManager.default.removeItem(at: Self.projectsDirectory.appendingPathComponent(folder))
+    /// A session is `<id>.jsonl` in the project folder, sometimes with a `<id>/`
+    /// folder beside it (e.g. large tool results).
+    func removeSessions(ids: [String], workingDirectory: URL) {
+        let project = Self.projectsDirectory.appendingPathComponent(Self.projectFolderName(for: workingDirectory))
+        for id in ids where UUID(uuidString: id) != nil {
+            try? FileManager.default.removeItem(at: project.appendingPathComponent("\(id).jsonl"))
+            try? FileManager.default.removeItem(at: project.appendingPathComponent(id))
+        }
+    }
+
+    func removeSessions(workingDirectory: URL, except keep: Set<String>) {
+        let project = Self.projectsDirectory.appendingPathComponent(Self.projectFolderName(for: workingDirectory))
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: project.path)) ?? []
+        let ids = Set(names.map { $0.hasSuffix(".jsonl") ? String($0.dropLast(6)) : $0 })
+        removeSessions(ids: Array(ids.subtracting(keep)), workingDirectory: workingDirectory)
     }
 
     func removeSessions(under root: URL, except keep: Set<String>) {
@@ -80,7 +91,10 @@ struct ClaudeCodeProvider: AgentProvider {
         let tools = Self.tools.filter { request.allowWeb || !webTools.contains($0) }.joined(separator: ",")
         var session: [String]
         switch request.session {
-        case .start(let id): session = ["--session-id", id]
+        case .start(let id):
+            session = ["--session-id", id]
+            // The desktop app shows this as the session's title after ⌘O.
+            if let title = request.title, !title.isEmpty { session += ["--name", title] }
         case .resume(let id): session = ["--resume", id]
         case nil: session = ["--no-session-persistence"]
         }

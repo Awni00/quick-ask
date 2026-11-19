@@ -62,18 +62,27 @@ if let index = arguments.firstIndex(of: "--settings-snapshot"), index + 1 < argu
     let settings = Settings.shared
     let provider = ProviderRegistry.provider(id: settings.providerID)
     let store = ConversationStore(provider: provider, settings: settings)
-    let savedHandedOff = settings.handedOffConversations
+    let savedHandedOff = (settings.handedOffConversations, settings.handedOffSessions)
     var step = 0
     func check(_ ok: Bool, _ what: String) { print("\(ok ? "PASS" : "FAIL")  \(what)") }
-    func sessionFolders() -> Set<String> {
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: ClaudeCodeProvider.projectsDirectory.path)) ?? []
-        let prefix = ClaudeCodeProvider.projectFolderName(for: ScratchSpace.root) + "-"
-        return Set(names.filter { $0.hasPrefix(prefix) })
+    let project = ClaudeCodeProvider.projectsDirectory
+        .appendingPathComponent(ClaudeCodeProvider.projectFolderName(for: ScratchSpace.workspace))
+    func sessionFiles() -> Set<String> {
+        Set(((try? FileManager.default.contentsOfDirectory(atPath: project.path)) ?? []).filter { $0.hasSuffix(".jsonl") })
     }
     func conversationFolders() -> Set<String> {
-        Set((try? FileManager.default.contentsOfDirectory(atPath: ScratchSpace.root.path)) ?? [])
+        Set((try? FileManager.default.contentsOfDirectory(atPath: ScratchSpace.workspace.path)) ?? [])
     }
-    let before = (sessions: sessionFolders(), folders: conversationFolders())
+    func title(ofSession file: String) -> String? {
+        guard let text = try? String(contentsOf: project.appendingPathComponent(file), encoding: .utf8) else { return nil }
+        for line in text.split(separator: "\n") {
+            if let obj = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+               obj["type"] as? String == "custom-title" { return obj["customTitle"] as? String }
+        }
+        return nil
+    }
+    let before = (sessions: sessionFiles(), folders: conversationFolders())
+    print("project folder: \(project.lastPathComponent)")
     let savedModel = settings.model(for: provider)
     store.setModel("haiku")
     var waiting = false  // true while an answer we asked for is pending
@@ -90,24 +99,29 @@ if let index = arguments.firstIndex(of: "--settings-snapshot"), index + 1 < argu
             ask { store.send("What number did I ask you to remember? Reply with just the number.") }
         case 2:
             check(store.lastAnswer?.contains("4817") == true, "turn 2 resumed the session (answer: \(store.lastAnswer ?? "-"))")
-            check(sessionFolders().subtracting(before.sessions).count == 1, "one session folder exists in ~/.claude/projects")
+            let new = sessionFiles().subtracting(before.sessions)
+            check(new.count == 1, "one session file in the shared project folder")
+            let title = new.first.flatMap(title(ofSession:))
+            check(title == "Remember the number 4817. Reply with just OK.", "session title is the first question (\(title ?? "-"))")
             ask { store.retry() }
         case 3:
             check(store.lastAnswer?.contains("4817") == true, "retry answered from a fresh session (answer: \(store.lastAnswer ?? "-"))")
+            check(sessionFiles().subtracting(before.sessions).count == 1, "retry deleted the superseded session")
             let url = store.handOffSession()
             check(url?.absoluteString.hasPrefix("claude://resume?session=") == true, "hand-off link: \(url?.absoluteString ?? "-")")
-            let keptSessions = sessionFolders().subtracting(before.sessions)
+            let keptSessions = sessionFiles().subtracting(before.sessions)
             let keptFolders = conversationFolders().subtracting(before.folders)
             check(keptSessions.count == 1 && keptFolders.count == 1, "handed-off conversation kept its folder and session")
             // Clean up the test's handed-off conversation.
-            settings.handedOffConversations = savedHandedOff
-            for name in keptFolders { ScratchSpace.remove(ScratchSpace.root.appendingPathComponent(name), provider: provider) }
+            (settings.handedOffConversations, settings.handedOffSessions) = savedHandedOff
+            for name in keptFolders { ScratchSpace.removeConversation(ScratchSpace.workspace.appendingPathComponent(name)) }
+            provider.removeSessions(ids: keptSessions.map { String($0.dropLast(6)) }, workingDirectory: ScratchSpace.workspace)
             // Now a normal conversation, which reset must delete.
             ask { store.send("Say OK.") }
         case 4:
-            check(sessionFolders().subtracting(before.sessions).count == 1, "second conversation has a session")
+            check(sessionFiles().subtracting(before.sessions).count == 1, "second conversation has a session")
             store.reset()
-            check(sessionFolders() == before.sessions && conversationFolders() == before.folders,
+            check(sessionFiles() == before.sessions && conversationFolders() == before.folders,
                   "reset deleted the conversation's folder and session")
             settings.setModel(savedModel, for: provider)
             exit(0)
@@ -133,8 +147,10 @@ if let index = arguments.firstIndex(of: "--settings-snapshot"), index + 1 < argu
         messages: [ChatMessage(role: .user, content: rest.joined(separator: " "))],
         model: model ?? settings.model(for: provider),
         instructions: Prompt.instructions(extra: settings.instructions),
-        workingDirectory: ScratchSpace.make()
+        workingDirectory: FileManager.default.temporaryDirectory
+            .appendingPathComponent("QuickAsk-selftest-\(UUID().uuidString)", isDirectory: true)
     )
+    try? FileManager.default.createDirectory(at: request.workingDirectory, withIntermediateDirectories: true)
     let start = Date()
     var firstText: TimeInterval?
     let runner = AgentRunner()
@@ -147,7 +163,7 @@ if let index = arguments.firstIndex(of: "--settings-snapshot"), index + 1 < argu
     }, completion: { outcome in
         let files = (try? FileManager.default.contentsOfDirectory(atPath: request.workingDirectory.path)) ?? []
         print("\n--- scratch files: \(files)")
-        ScratchSpace.remove(request.workingDirectory, provider: provider)
+        try? FileManager.default.removeItem(at: request.workingDirectory)  // no session was saved
         let total = Date().timeIntervalSince(start)
         switch outcome {
         case .success: print(String(format: "\n--- ok: first text %.2fs, total %.2fs", firstText ?? -1, total))
