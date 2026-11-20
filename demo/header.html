@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- README header: icon + "QuickAsk". Rendered to docs/header-{light,dark}.png
+     by demo/make.sh (demo/snapshot.swift), on a transparent background.
+     Dark: the icon's own colours ("Quick" = bolt amber, "Ask" = question-mark white).
+     Light: "Ask" in the icon's navy and a deeper amber, readable on white. -->
+<style>
+  html, body { margin: 0; background: transparent; }
+  body { width: 720px; height: 150px; display: flex; align-items: center; justify-content: center; }
+  .header { display: flex; align-items: center; gap: 24px; }
+  img { width: 112px; height: 112px; }
+  .name { font: 700 72px/1 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: -1.5px; }
+  .quick { background: linear-gradient(#FFE45C, #FFAE00); -webkit-background-clip: text; color: transparent; }
+  .ask { color: #F3F5FF; }
+  .light .quick { background-image: linear-gradient(#FFC21A, #E89B00); }
+  .light .ask { color: #1E2A78; }
+</style>
+<body>
+<div class="header"><img src="../Resources/Icon/AppIcon.svg" alt=""><div class="name"><span class="quick">Quick</span><span class="ask">Ask</span></div></div>
+<script>if (location.hash === "#light") document.body.classList.add("light");</script>
+</body>

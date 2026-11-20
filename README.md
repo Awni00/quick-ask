@@ -1,4 +1,9 @@
-# Quick Ask
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/header-dark.png">
+    <img src="docs/header-light.png" width="480" alt="QuickAsk">
+  </picture>
+</p>
 
 A small macOS menu-bar app for asking your AI agent a quick question. 
 Press ⌥Space, ask, and read the answer in a floating popup, without leaving what you're doing. 

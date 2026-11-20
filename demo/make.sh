@@ -20,6 +20,12 @@ ffmpeg -loglevel error -y -framerate 30 -i $out/frames/%05d.png \
   -vf "fps=15,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=160:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" \
   docs/demo.gif
 
+# README header, one per GitHub theme (transparent background).
+swiftc -O -swift-version 5 demo/snapshot.swift -o $out/snapshot
+for theme in light dark; do
+  $out/snapshot "file://$PWD/demo/header.html#$theme" docs/header-$theme.png 720 150
+done
+
 # Stills at their Retina size, as PNG.
 for scene in answer code empty; do cp $out/stills/$scene.png docs/$scene.png; done
 ls -la docs
