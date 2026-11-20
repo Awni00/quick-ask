@@ -10,7 +10,7 @@ swiftc -O -swift-version 5 demo/render.swift -o $out/render
 
 rm -rf $out/frames
 $out/render demo $out/frames 30
-for scene in answer code empty; do $out/render $scene $out/stills; done
+for scene in code empty; do $out/render $scene $out/stills; done
 
 # MP4 (full Retina frames, scaled to 1600 wide) and a smaller GIF for the README.
 ffmpeg -loglevel error -y -framerate 30 -i $out/frames/%05d.png \
@@ -27,5 +27,5 @@ for theme in light dark; do
 done
 
 # Stills at their Retina size, as PNG.
-for scene in answer code empty; do cp $out/stills/$scene.png docs/$scene.png; done
+for scene in code empty; do cp $out/stills/$scene.png docs/$scene.png; done
 ls -la docs

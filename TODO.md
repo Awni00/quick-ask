@@ -42,8 +42,8 @@
 - [x] Name: "QuickAsk" (one word; was "Quick Ask"). App, data folder and
   desktop-app project all use it.
 - [x] Icon: "interlock", a white "?" whose stem is an amber ⚡ (quick + ask), plus a
-  matching menu-bar glyph. Sources in `Resources/Icon/`; other concepts in
-  `design/icon-concepts/`.
+  matching menu-bar glyph. Sources in `Resources/Icon/`. (The other concepts
+  explored were in `design/`, removed in the public clean-up; see git history.)
 - [x] Native popup (Swift + web view) on ⌥Space, streaming answers, follow-ups
 - [x] Markdown, KaTeX math, highlighted code with copy buttons
 - [x] Copy answer, retry, stop, new chat, model switch (⌘1–3)

@@ -127,25 +127,6 @@ window.scenes = {
       };
     },
   },
-  answer: {
-    still: true,
-    dark: false,
-    frame() {
-      stage.select(1);
-      stage.cursor(0, 0, false);
-      stage.keys(0);
-      return {
-        visible: true, opacity: 1, input: "",
-        state: {
-          ...BASE, sessionHandoff: "Claude Code",
-          messages: [
-            { role: "user", content: KELLY_QUESTION, stopped: false, context: SELECTION },
-            { role: "assistant", content: KELLY_ANSWER, stopped: false },
-          ],
-        },
-      };
-    },
-  },
   empty: {
     still: true,
     dark: false,

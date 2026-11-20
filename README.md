@@ -96,3 +96,8 @@ popup offers to enable it.
 
 The README media are rendered by `demo/make.sh` (needs ffmpeg). Planned work
 is tracked in [TODO.md](TODO.md).
+
+## License
+
+[MIT](LICENSE). The bundled web libraries keep their own licenses (MIT, and
+BSD-3-Clause for highlight.js); see `Resources/web/vendor/VERSIONS.txt`.
