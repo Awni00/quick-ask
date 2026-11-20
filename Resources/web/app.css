@@ -64,6 +64,10 @@ html, body { height: 100%; }
 
 /* Thread */
 #thread { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 18px 2px; }
+/* Contain the messages' margins, so the measured height includes the last
+   message's bottom margin (otherwise it collapses out and the thread
+   overflows by that much). */
+#thread-inner { display: flow-root; }
 #composer { flex: none; margin-top: auto; }
 body.empty #thread { display: none; }
 
