@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- The mock desktop behind the popup in the demo renders (demo/render.swift).
+     scene.js defines what happens over time; render.swift calls frame(t). -->
+<link rel="stylesheet" href="../Resources/web/vendor/katex/katex.min.css">
+<style>
+  :root { color-scheme: light; }
+  html, body { margin: 0; width: 1280px; height: 820px; overflow: hidden; }
+  body {
+    font: 13px -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #5b7fd1 0%, #8a6fd6 45%, #e08ab0 100%);
+    position: relative;
+  }
+  body.dark { background: linear-gradient(135deg, #1d2b4f 0%, #3a2c5c 50%, #5c2e4a 100%); }
+  .menubar {
+    position: absolute; inset: 0 0 auto 0; height: 24px;
+    background: rgba(255, 255, 255, 0.35); backdrop-filter: blur(20px);
+    display: flex; align-items: center; padding: 0 14px; gap: 18px;
+    font-size: 13px; color: #1d1d1f;
+  }
+  body.dark .menubar { background: rgba(0, 0, 0, 0.3); color: #f5f5f7; }
+  .menubar b { font-weight: 600; }
+  .menubar .right { margin-left: auto; display: flex; gap: 16px; align-items: center; }
+  .menubar img { width: 16px; height: 16px; }
+  body.dark .menubar img { filter: invert(1); }
+
+  .window {
+    position: absolute; left: 150px; top: 70px; width: 980px; height: 720px;
+    background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 0 0 0.5px rgba(0,0,0,.25), 0 22px 60px rgba(0,0,0,.35);
+  }
+  body.dark .window { background: #1e1e20; color: #e8e8ea; box-shadow: 0 0 0 0.5px rgba(255,255,255,.18), 0 22px 60px rgba(0,0,0,.5); }
+  .titlebar {
+    height: 38px; display: flex; align-items: center; padding: 0 14px;
+    background: #f3f3f4; border-bottom: 1px solid #dedee0; color: #4a4a4f; font-weight: 600;
+  }
+  body.dark .titlebar { background: #2a2a2c; border-color: #3a3a3c; color: #c8c8cc; }
+  .lights { display: flex; gap: 8px; margin-right: 14px; }
+  .lights span { width: 12px; height: 12px; border-radius: 50%; }
+  .lights span:nth-child(1) { background: #ff5f57; }
+  .lights span:nth-child(2) { background: #febc2e; }
+  .lights span:nth-child(3) { background: #28c840; }
+  .page {
+    padding: 34px 110px; font: 16px/1.62 "New York", "Iowan Old Style", Georgia, serif; color: #222;
+  }
+  body.dark .page { color: #dcdce0; }
+  .page h1 { font-size: 27px; margin: 0 0 6px; font-weight: 600; }
+  .page .sub { font: 13px -apple-system, sans-serif; color: #888; margin-bottom: 22px; }
+  .page p { margin: 0 0 15px; }
+  .sel { border-radius: 2px; }
+  .sel.on { background: #b3d4fc; }
+  body.dark .sel.on { background: #3f638b; }
+
+  .cursor { position: absolute; width: 18px; height: 24px; pointer-events: none; z-index: 10; }
+  .keys {
+    position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 11; transition: none;
+  }
+  .keys span {
+    min-width: 46px; height: 46px; padding: 0 16px; border-radius: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font: 500 20px -apple-system, sans-serif; color: #fff;
+    background: rgba(20, 20, 24, 0.72); backdrop-filter: blur(12px);
+    box-shadow: 0 6px 20px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.12);
+  }
+</style>
+</head>
+<body>
+<div class="menubar">
+  <b>Preview</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Tools</span><span>Window</span>
+  <span class="right"><img src="../Resources/Icon/MenuBarIcon.png" alt=""><span>Thu 20 Nov 10:42</span></span>
+</div>
+
+<div class="window">
+  <div class="titlebar"><span class="lights"><span></span><span></span><span></span></span>betting-notes.pdf</div>
+  <div class="page">
+    <h1>Sizing repeated bets</h1>
+    <div class="sub">Lecture notes · Section 3.2</div>
+    <p>Suppose a gambler faces the same favourable bet many times: it wins with probability
+      <i>p</i>, loses with probability <i>q</i> = 1 − <i>p</i>, and pays <i>b</i> to 1. Betting too
+      little wastes the edge; betting too much risks ruin. How much of the bankroll should be wagered
+      each round?</p>
+    <p>The answer depends on what is being optimized. Maximizing expected wealth says to bet
+      everything every time, which goes broke with probability one. Kelly (1956) proposed a
+      different target. <span id="target"></span></p>
+    <p>The resulting strategy grows wealth faster in the long run than any essentially different
+      strategy, and never risks the whole bankroll.</p>
+  </div>
+</div>
+
+<svg class="cursor" id="cursor" viewBox="0 0 18 24"><path d="M2 1.5v18l4.6-4.4 3 6.8 3-1.3-3-6.7h6.4z" fill="#000" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
+<div class="keys" id="keys" style="opacity:0"><span>⌥</span><span>Space</span></div>
+
+<script>
+  // The selectable sentence, one span per word so the selection can grow word by word.
+  const sentence = "A Kelly bettor maximizes the expected logarithm of wealth, which for a simple bet means wagering the fraction f* = p − q/b of the bankroll.";
+  const target = document.getElementById("target");
+  const words = sentence.split(" ").map((w, i) => {
+    const s = document.createElement("span");
+    s.className = "sel";
+    s.textContent = (i ? " " : "") + w;
+    target.appendChild(s);
+    return s;
+  });
+  const cursor = document.getElementById("cursor"), keys = document.getElementById("keys");
+
+  // Stage API used by scene.js.
+  window.stage = {
+    sentence,
+    setDark(dark) { document.body.classList.toggle("dark", dark); },
+    // Fraction of the sentence selected (0…1); returns the end word's position.
+    select(fraction) {
+      const n = Math.round(fraction * words.length);
+      words.forEach((w, i) => w.classList.toggle("on", i < n));
+    },
+    wordPoint(fraction, edge) {
+      const i = Math.min(words.length - 1, Math.max(0, Math.round(fraction * words.length) - 1));
+      const r = words[i].getBoundingClientRect();
+      return { x: edge === "start" ? r.left + 6 : r.right, y: r.top + r.height * 0.55 };
+    },
+    cursor(x, y, visible = true) {
+      cursor.style.left = x + "px"; cursor.style.top = y + "px";
+      cursor.style.display = visible ? "block" : "none";
+    },
+    keys(opacity) { keys.style.opacity = opacity; },
+    showWindow(visible) { document.querySelector(".window").style.display = visible ? "" : "none"; },
+  };
+</script>
+<script src="scene.js"></script>
+</body>
+</html>

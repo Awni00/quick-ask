@@ -1,65 +1,94 @@
 # Quick Ask
 
-A macOS menu-bar app: press ⌥Space, ask a quick question, and read the answer in a
-floating popup. Answers come from an agent CLI (currently Claude Code, on your
-subscription). Each conversation is a CLI session working in a shared folder,
-`~/Library/Application Support/Quick Ask/Quick Ask`, with its own notes subfolder.
-Both are kept only while the conversation lasts (by default 10 minutes after
-closing, or until ⌘N), then deleted, unless you continued it in the desktop app
-with ⌘O.
+A small macOS menu-bar app for quick questions. Press ⌥Space, ask, and read the
+answer in a floating popup, without leaving what you're doing. It runs the agent
+CLI you already have installed and signed in to (currently Claude Code, so
+questions use your Claude subscription). The CLI gets web search and a scratch
+folder of its own.
 
-## Build and install
+![Selecting text, pressing ⌥Space and asking about it](docs/demo.gif)
+
+<sub>Rendered from the real popup UI with a scripted conversation; the answer is
+a real Claude answer ([MP4](docs/demo.mp4)).</sub>
+
+## Why
+
+The Claude desktop app has a quick-entry shortcut (⌥⌥ by default), but once you
+send, it switches you to the desktop app. Usually I just want a quick answer
+right where I am, with no app or window switching and no chat history to clean up.
+
+## Features
+
+- **Answers inline.** Streamed markdown with math (KaTeX) and highlighted code.
+  Follow-ups continue the conversation.
+- **Selected text as context.** If text is selected when you press the hotkey,
+  it's attached as a quote to your question.
+- **Model choice.** Haiku, Sonnet or Opus from the speed dial in the popup (⌘1–3).
+- **Tools.** Web search and page fetching, and file tools confined to a
+  per-conversation scratch folder. No shell or code execution.
+- **Ephemeral by default.** A conversation is kept for 10 minutes after you close
+  the popup (configurable), then its CLI session and scratch folder are deleted.
+- **Hand-off.** ⌘O continues the same session in the Claude desktop app (Code
+  tab); ⇧⌘O opens it as a new chat.
+- **Settings.** Hotkey, open at login, default model, web search on or off,
+  extra instructions.
+
+| | |
+|---|---|
+| ![Empty popup](docs/empty.png) | ![A code answer in dark mode](docs/code.png) |
+
+## How it works
+
+A native Swift app: a floating, non-activating `NSPanel` with a blurred
+background, holding a `WKWebView` that renders the chat (markdown-it, KaTeX,
+highlight.js, all bundled). Each question runs the CLI headless:
+
+```bash
+claude -p --session-id <id> --name "<first question>" \
+  --output-format stream-json --include-partial-messages --verbose \
+  --restricted --tools WebSearch,WebFetch,Read,Write,Edit,Glob,Grep \
+  --allowedTools <same> --permission-prompts none \
+  --strict-mcp-config --setting-sources= \
+  --system-prompt "<short-answer instructions>" --model sonnet
+```
+
+The question goes in on stdin. The app parses the JSON event stream for text
+deltas and tool activity, and follow-ups use `--resume <id>`. The CLI runs in
+the app's own folder with a clean environment: no user settings, plugins, hooks
+or MCP servers. Selected text is read with the Accessibility API, falling back
+to a simulated ⌘C with the clipboard restored. Everything CLI-specific lives in
+one provider (`Sources/QuickAsk/Agents/ClaudeCodeProvider.swift`), so another
+agent CLI (e.g. Codex) can be added as a second provider.
+
+## Build
+
+Requires macOS 14+, the Xcode command line tools, and a signed-in `claude` CLI.
 
 ```bash
 ./build.sh --install
 ```
 
 This builds `build/Quick Ask.app`, signs it ad hoc, copies it to `~/Applications`
-and starts it. Requires the Xcode command line tools and a logged-in `claude` CLI.
+and starts it. Reading selected text needs the Accessibility permission; the
+popup offers to enable it.
 
-The installed app opens at login (toggle "Open at Login" in the ✦ menu-bar menu;
-it's listed in System Settings → General → Login Items).
-
-## Keys
+<details>
+<summary>Keys</summary>
 
 | Key | Action |
 |---|---|
-| ⌥Space | Show or hide |
+| ⌥Space | Show or hide (change it in Settings) |
 | ↵ / ⇧↵ | Send / new line |
 | ⌘C (nothing selected) | Copy the last answer |
-| ⌘R | Retry the last question |
-| ⌘. | Stop the answer |
+| ⌘R / ⌘. | Retry / stop |
 | ⌘N | New chat |
-| ⌘O | Continue this same session in the Claude desktop app's Code tab (`claude://resume`), under a "Quick Ask" project, titled with the first question |
-| ⇧⌘O | Open as a new Claude chat with the conversation filled in (if it's too long, older turns are left out and the full text is copied) |
+| ⌘O / ⇧⌘O | Continue in the Claude desktop app / open as a new chat |
 | ⌘1–⌘3 | Haiku / Sonnet / Opus |
 | ⌘, | Settings |
 | Esc | Hide |
 | Hold ⌘ | Show the shortcuts that apply |
 
-## Settings
+</details>
 
-Open Settings from the ✦ menu-bar menu or with ⌘, in the popup: hotkey, open at
-login, how long to keep a conversation, default model, web search, the CLI's path
-and sign-in status, extra instructions, and the Accessibility permission.
-The values live in the `local.QuickAsk` defaults domain (keys in
-`Sources/QuickAsk/Settings.swift`).
-
-## Layout
-
-- `Sources/QuickAsk/Agents/`: the provider layer. Everything specific to one CLI
-  is in a provider (`ClaudeCodeProvider.swift`); add another CLI by writing a
-  provider and registering it in `ProviderRegistry`.
-- `Sources/QuickAsk/`: hotkey, panel, conversation state, settings.
-- `Resources/Icon/`: app icon and menu-bar glyph. Edit the SVGs; `build.sh`
-  regenerates `AppIcon.icns` and `MenuBarIcon.png` from them
-  (`tools/render-icons.swift`, using macOS's own SVG renderer).
-- `design/`: icon concepts explored along the way.
-- `Resources/web/`: the chat UI (markdown-it, KaTeX, highlight.js bundled in
-  `vendor/`, see `vendor/VERSIONS.txt`).
-
-Test the provider layer without the UI:
-
-```bash
-.build/release/QuickAsk --selftest --model haiku "What is 2+2?"
-```
+The README media are rendered by `demo/make.sh` (needs ffmpeg). Planned work
+is tracked in [TODO.md](TODO.md).
