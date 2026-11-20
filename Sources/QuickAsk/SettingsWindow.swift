@@ -11,7 +11,7 @@ final class SettingsWindowController {
         if window == nil {
             let hosting = NSHostingController(rootView: SettingsView())
             let window = NSWindow(contentViewController: hosting)
-            window.title = "Quick Ask Settings"
+            window.title = "QuickAsk Settings"
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
             self.window = window
@@ -64,7 +64,7 @@ struct SettingsView: View {
                     if !LoginItem.isInstalledCopy {
                         Text("Only for the copy installed in Applications")
                     } else if loginNeedsApproval {
-                        Text("Approve Quick Ask in System Settings → General → Login Items")
+                        Text("Approve QuickAsk in System Settings → General → Login Items")
                     }
                 }
                 .onChange(of: launchAtLogin) { _, on in LoginItem.set(on) }

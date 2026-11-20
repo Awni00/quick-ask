@@ -1,7 +1,7 @@
 import Foundation
 import ServiceManagement
 
-/// Opens Quick Ask at login via the system's login-item service (shown in
+/// Opens QuickAsk at login via the system's login-item service (shown in
 /// System Settings → General → Login Items).
 ///
 /// The user's choice is kept in Settings and re-applied on every launch,

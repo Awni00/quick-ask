@@ -16,7 +16,7 @@ struct ClaudeCodeProvider: AgentProvider {
     ]
     let defaultModel = "sonnet"
     let executableCandidates = ["~/.local/bin/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"]
-    // If Quick Ask was started from inside a Claude Code session, its CLAUDE_CODE_*
+    // If QuickAsk was started from inside a Claude Code session, its CLAUDE_CODE_*
     // variables would make this CLI act as that session's child (plugins, auth
     // hand-off), and an ANTHROPIC_API_KEY would bill the API instead of the
     // subscription.

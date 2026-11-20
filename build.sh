@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Builds Quick Ask.app into build/. With --install, also copies it to
+# Builds QuickAsk.app into build/. With --install, also copies it to
 # ~/Applications and (re)starts it.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 swift build -c release
 
-APP="build/Quick Ask.app"
+APP="build/QuickAsk.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/QuickAsk "$APP/Contents/MacOS/"
@@ -29,10 +29,11 @@ echo "Built $APP"
 if [[ "${1:-}" == "--install" ]]; then
   pkill -x QuickAsk || true
   mkdir -p ~/Applications
-  rm -rf ~/Applications/"Quick Ask.app"
+  # "Quick Ask.app" is the name before the rename to QuickAsk.
+  rm -rf ~/Applications/"QuickAsk.app" ~/Applications/"Quick Ask.app"
   cp -R "$APP" ~/Applications/
   # `open` passes on the caller's environment; start the app with a clean one,
   # as Finder or a login item would.
-  env -i HOME="$HOME" USER="$USER" PATH=/usr/bin:/bin open ~/Applications/"Quick Ask.app"
-  echo "Installed and started ~/Applications/Quick Ask.app"
+  env -i HOME="$HOME" USER="$USER" PATH=/usr/bin:/bin open ~/Applications/"QuickAsk.app"
+  echo "Installed and started ~/Applications/QuickAsk.app"
 fi

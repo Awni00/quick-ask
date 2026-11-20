@@ -3,8 +3,8 @@ import Foundation
 /// Where conversations live on disk.
 ///
 /// All conversations share one working directory, ~/Library/Application
-/// Support/Quick Ask/Quick Ask, so sessions handed off to the desktop app are
-/// grouped under one "Quick Ask" project there (the app names projects after
+/// Support/QuickAsk/QuickAsk, so sessions handed off to the desktop app are
+/// grouped under one "QuickAsk" project there (the app names projects after
 /// the working folder). Each conversation keeps its notes in its own subfolder,
 /// <workspace>/<conversation id>.
 ///
@@ -13,11 +13,11 @@ import Foundation
 enum ScratchSpace {
     static var base: URL {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return support.appendingPathComponent("Quick Ask", isDirectory: true)
+        return support.appendingPathComponent("QuickAsk", isDirectory: true)
     }
 
     /// The shared working directory (its name is the desktop app's project name).
-    static var workspace: URL { base.appendingPathComponent("Quick Ask", isDirectory: true) }
+    static var workspace: URL { base.appendingPathComponent("QuickAsk", isDirectory: true) }
 
     /// Earlier layouts: one working directory per conversation, and before
     /// that, temporary folders.

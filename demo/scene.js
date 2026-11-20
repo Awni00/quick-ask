@@ -2,7 +2,7 @@
 // this file), calls scenes[name].frame(t) for each frame, and applies the
 // returned popup description to the real popup UI (Resources/web).
 //
-// Both answers were produced by Quick Ask's own CLI call
+// Both answers were produced by QuickAsk's own CLI call
 // (`QuickAsk --selftest --model …`) and are pasted here verbatim.
 
 const KELLY_QUESTION = "Why the logarithm? Quick example?";

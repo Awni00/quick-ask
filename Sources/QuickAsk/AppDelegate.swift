@@ -29,7 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if note.object as? Bool == true { self?.hotKey = nil } else { self?.registerHotKey() }
         }
 
-        // For testing: `open -a "Quick Ask" --args --show` opens the panel on launch,
+        // For testing: `open -a "QuickAsk" --args --show` opens the panel on launch,
         // `--ask "question"` also sends a question, and `--settings` opens settings.
         let args = CommandLine.arguments
         if args.contains("--show") || args.contains("--ask") {
@@ -115,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings.target = self
         menu.addItem(settings)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit Quick Ask", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: "Quit QuickAsk", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
     }
 
@@ -126,10 +126,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
            let image = NSImage(contentsOf: url) {
             image.size = NSSize(width: 18, height: 18)
             image.isTemplate = true
-            image.accessibilityDescription = "Quick Ask"
+            image.accessibilityDescription = "QuickAsk"
             return image
         }
-        return NSImage(systemSymbolName: "questionmark", accessibilityDescription: "Quick Ask")
+        return NSImage(systemSymbolName: "questionmark", accessibilityDescription: "QuickAsk")
     }
 
     @objc private func showPanel() { controller.show() }

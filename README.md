@@ -72,7 +72,7 @@ Requires macOS 14+, the Xcode command line tools, and a signed-in `claude` CLI.
 ./build.sh --install
 ```
 
-This builds `build/Quick Ask.app`, signs it ad hoc, copies it to `~/Applications`
+This builds `build/QuickAsk.app`, signs it ad hoc, copies it to `~/Applications`
 and starts it. Reading selected text needs the Accessibility permission; the
 popup offers to enable it.
 

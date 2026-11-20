@@ -5,9 +5,9 @@
     <key>CFBundleIdentifier</key>
     <string>local.QuickAsk</string>
     <key>CFBundleName</key>
-    <string>Quick Ask</string>
+    <string>QuickAsk</string>
     <key>CFBundleDisplayName</key>
-    <string>Quick Ask</string>
+    <string>QuickAsk</string>
     <key>CFBundleExecutable</key>
     <string>QuickAsk</string>
     <key>CFBundleIconFile</key>

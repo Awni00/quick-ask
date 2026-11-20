@@ -49,7 +49,7 @@ final class Settings {
         set { defaults.set(newValue, forKey: "axHintDismissed") }
     }
 
-    /// Open Quick Ask at login.
+    /// Open QuickAsk at login.
     var launchAtLogin: Bool {
         get { defaults.bool(forKey: "launchAtLogin") }
         set { defaults.set(newValue, forKey: "launchAtLogin") }

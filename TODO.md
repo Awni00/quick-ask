@@ -39,7 +39,8 @@
   requirement (`identifier "local.QuickAsk"`); checked across two rebuilds with
   different code hashes
 - [x] Slim scrollbars (5 px rounded thumb, darker on hover) in the popup
-- [x] Name: keep "Quick Ask"
+- [x] Name: "QuickAsk" (one word; was "Quick Ask"). App, data folder and
+  desktop-app project all use it.
 - [x] Icon: "interlock", a white "?" whose stem is an amber ⚡ (quick + ask), plus a
   matching menu-bar glyph. Sources in `Resources/Icon/`; other concepts in
   `design/icon-concepts/`.
@@ -53,6 +54,6 @@
   (`claude://resume?session=<id>`); ⇧⌘O opens a new chat with the transcript.
   Conversations are CLI sessions (follow-ups resume them); deleted with the
   conversation unless handed off. Checked with `QuickAsk --session-test`.
-- [x] Handed-off sessions are grouped under one "Quick Ask" project (shared
+- [x] Handed-off sessions are grouped under one "QuickAsk" project (shared
   working folder, per-conversation notes subfolders) and titled with the first
   question (`--name`)

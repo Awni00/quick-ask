@@ -22,9 +22,9 @@ enum SelectionCapture {
 
     /// Shows the system prompt and opens the Accessibility settings page.
     ///
-    /// If Quick Ask is listed there but not trusted, the entry belongs to an
+    /// If QuickAsk is listed there but not trusted, the entry belongs to an
     /// earlier build's signature; it looks enabled but doesn't apply. Clearing
-    /// Quick Ask's own entry first makes macOS add a fresh one.
+    /// QuickAsk's own entry first makes macOS add a fresh one.
     static func requestPermission() {
         if !isTrusted, let bundleID = Bundle.main.bundleIdentifier {
             let reset = Process()
