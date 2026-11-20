@@ -1,9 +1,8 @@
 # Quick Ask
 
-A small macOS menu-bar app for quick questions. Press ⌥Space, ask, and read the
-answer in a floating popup, without leaving what you're doing. It runs the agent
-CLI you already have installed and signed in to (currently Claude Code, so
-questions use your Claude subscription). The CLI gets web search and a scratch
+A small macOS menu-bar app for asking your AI agent a quick question. 
+Press ⌥Space, ask, and read the answer in a floating popup, without leaving what you're doing. 
+It runs the agent CLI you already have installed and signed in to (currently just Claude Code; uses your Claude subscription). The CLI gets web search and a scratch
 folder of its own.
 
 ![Selecting text, pressing ⌥Space and asking about it](docs/demo.gif)
@@ -11,7 +10,7 @@ folder of its own.
 <sub>Rendered from the real popup UI with a scripted conversation; the answer is
 a real Claude answer ([MP4](docs/demo.mp4)).</sub>
 
-## Why
+## Why I made this
 
 The Claude desktop app has a quick-entry shortcut (⌥⌥ by default), but once you
 send, it switches you to the desktop app. Usually I just want a quick answer
